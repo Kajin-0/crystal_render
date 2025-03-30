@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Zincblende Viewer</title>
+  <script src="https://3dmol.csb.pitt.edu/build/3Dmol-min.js"></script>
+  <style>
+    #viewer {
+      width: 100%;
+      height: 500px;
+      position: relative;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <h2>Zincblende Crystal Structure Viewer (e.g. GaAs, HgCdTe)</h2>
+  <div id="viewer"></div>
+
+  <script>
+    const viewer = $3Dmol.createViewer("viewer", { backgroundColor: "white" });
+
+    const a = 5.65; // lattice constant in angstroms
+    const atomA = "Ga"; // or Hg
+    const atomB = "As"; // or Te
+
+    const fractionalPositions = [
+      // Atom A sublattice (FCC)
+      [0, 0, 0],
+      [0, 0.5, 0.5],
+      [0.5, 0, 0.5],
+      [0.5, 0.5, 0],
+      // Atom B sublattice (offset by (1/4,1/4,1/4))
+      [0.25, 0.25, 0.25],
+      [0.75, 0.75, 0.25],
+      [0.25, 0.75, 0.75],
+      [0.75, 0.25, 0.75],
+    ];
+
+    fractionalPositions.forEach((frac, i) => {
+      const elem = i < 4 ? atomA : atomB;
+      const [x, y, z] = frac.map(v => v * a);
+      viewer.addAtom({ elem, x, y, z });
+    });
+
+    viewer.zoomTo();
+    viewer.render();
+  </script>
+</body>
+</html>
