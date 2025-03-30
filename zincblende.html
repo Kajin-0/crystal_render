@@ -117,16 +117,13 @@
         <div>Space group: F-43m (216)</div>
         <hr>
         <div class="legend">
-          <div class="legend-color" style="background-color:#FF5252;"></div>
-          <div>Hg</div>
+          <div class="legend-color" style="background-color:#E000E0;"></div> <div>Hg (Magenta)</div>
         </div>
         <div class="legend">
-          <div class="legend-color" style="background-color:#FFD740;"></div>
-          <div>Cd</div>
+          <div class="legend-color" style="background-color:#CCCCCC;"></div> <div>Cd (Light Grey)</div>
         </div>
         <div class="legend">
-          <div class="legend-color" style="background-color:#40C4FF;"></div>
-          <div>Te</div>
+          <div class="legend-color" style="background-color:#33CC33;"></div> <div>Te (Green)</div>
         </div>
       </div>
     </div>
@@ -200,9 +197,14 @@
       // Define constants
       const a_HgTe = 6.46; // Å
       const a_CdTe = 6.48; // Å
+      // --- Updated Colors ---
       const atomColors = {
-        "Hg": "#FF5252", "Cd": "#FFD740", "Te": "#40C4FF"
+        "Hg": "#E000E0", // Magenta
+        "Cd": "#CCCCCC", // Light Grey
+        "Te": "#33CC33"  // Green
       };
+      // --- End Updated Colors ---
+
 
       // State variables
       let latticeConstant = a_HgTe; // Will be updated
@@ -234,8 +236,7 @@
             }
           }
         }
-        // Add serial property after generation if needed (e.g., for unique IDs)
-        atoms.forEach((atom, index) => atom.serial = index);
+        atoms.forEach((atom, index) => atom.serial = index); // Add serial ID
         return atoms;
       }
 
@@ -290,7 +291,6 @@
 
         if (!currentAtoms || currentAtoms.length === 0) { viewer.render(); return; }
 
-        // Update info panel text (using already calculated latticeConstant)
         let cdRatio = parseFloat($("#composition").val());
         $("#composition-info").html(`Composition: Hg<sub>${(1-cdRatio).toFixed(1)}</sub>Cd<sub>${cdRatio.toFixed(1)}</sub>Te`);
         $("#lattice-info").text(`Lattice constant: ${latticeConstant.toFixed(2)} Å`);
@@ -299,23 +299,37 @@
 
         let style = {};
         const baseStickRadius = 0.1; const ballScale = 0.35; const stickModeAtomScale = 0.05;
-        const colorScheme = { prop: 'elem', map: atomColors };
+        const colorScheme = { prop: 'elem', map: atomColors }; // Uses updated colors
 
         switch (currentViewStyle) {
           case "stick":
             style = {
-              stick: { radius: baseStickRadius, colorscheme: colorScheme, bonds: 0 },
-              sphere: { scale: stickModeAtomScale, colorscheme: colorScheme } // Ensure atoms are present
+              stick: {
+                radius: baseStickRadius,
+                colorscheme: colorScheme
+                // Removed bonds: 0 - Rely on default
+              },
+              sphere: {
+                scale: stickModeAtomScale, // Keep tiny spheres
+                colorscheme: colorScheme
+              }
             }; break;
           case "ballAndStick":
             style = {
-              stick: { radius: baseStickRadius, colorscheme: colorScheme, bonds: 0 },
-              sphere: { scale: ballScale, colorscheme: colorScheme }
+              stick: {
+                radius: baseStickRadius,
+                colorscheme: colorScheme
+                 // Removed bonds: 0 - Rely on default
+              },
+              sphere: {
+                scale: ballScale,
+                colorscheme: colorScheme
+              }
             }; break;
           case "spacefill":
             style = { sphere: { colorscheme: colorScheme } }; break;
         }
-        viewer.setStyle({}, style);
+        viewer.setStyle({}, style); // Apply the style
 
         if (cellShown) drawUnitCellOutline();
         if (labelsShown) addAtomLabels();
@@ -334,8 +348,7 @@
 
       // *** Function to Update View Options AND Render ***
       function redrawView() {
-        // Assumes currentAtoms is valid and does not need regeneration
-        renderCore();
+        renderCore(); // Just re-render with existing atoms
       }
 
       // Function to update active button styling
@@ -346,18 +359,18 @@
       }
 
       // --- Event listeners ---
-      $("#composition").on("input", regenerateAndRender); // Update structure
-      $("#btn-1x1x1").click(function() { if(currentSupercell!==1){currentSupercell=1;updateActiveButtons("supercell",this);regenerateAndRender();}}); // Update structure
-      $("#btn-2x2x2").click(function() { if(currentSupercell!==2){currentSupercell=2;updateActiveButtons("supercell",this);regenerateAndRender();}}); // Update structure
+      $("#composition").on("input", regenerateAndRender);
+      $("#btn-1x1x1").click(function() { if(currentSupercell!==1){currentSupercell=1;updateActiveButtons("supercell",this);regenerateAndRender();}});
+      $("#btn-2x2x2").click(function() { if(currentSupercell!==2){currentSupercell=2;updateActiveButtons("supercell",this);regenerateAndRender();}});
 
-      $("#btn-stick").click(function() { if(currentViewStyle!=="stick"){currentViewStyle="stick";updateActiveButtons("visualization",this);redrawView();}}); // Update view
-      $("#btn-ball-stick").click(function() { if(currentViewStyle!=="ballAndStick"){currentViewStyle="ballAndStick";updateActiveButtons("visualization",this);redrawView();}}); // Update view
-      $("#btn-spacefill").click(function() { if(currentViewStyle!=="spacefill"){currentViewStyle="spacefill";updateActiveButtons("visualization",this);redrawView();}}); // Update view
+      $("#btn-stick").click(function() { if(currentViewStyle!=="stick"){currentViewStyle="stick";updateActiveButtons("visualization",this);redrawView();}});
+      $("#btn-ball-stick").click(function() { if(currentViewStyle!=="ballAndStick"){currentViewStyle="ballAndStick";updateActiveButtons("visualization",this);redrawView();}});
+      $("#btn-spacefill").click(function() { if(currentViewStyle!=="spacefill"){currentViewStyle="spacefill";updateActiveButtons("visualization",this);redrawView();}});
 
-      $("#btn-show-labels").click(function() { if(!labelsShown){labelsShown=true;updateActiveButtons("labels",this);redrawView();}}); // Update view
-      $("#btn-hide-labels").click(function() { if(labelsShown){labelsShown=false;updateActiveButtons("labels",this);redrawView();}}); // Update view
-      $("#btn-show-cell").click(function() { if(!cellShown){cellShown=true;updateActiveButtons("cell",this);redrawView();}}); // Update view
-      $("#btn-hide-cell").click(function() { if(cellShown){cellShown=false;updateActiveButtons("cell",this);redrawView();}}); // Update view
+      $("#btn-show-labels").click(function() { if(!labelsShown){labelsShown=true;updateActiveButtons("labels",this);redrawView();}});
+      $("#btn-hide-labels").click(function() { if(labelsShown){labelsShown=false;updateActiveButtons("labels",this);redrawView();}});
+      $("#btn-show-cell").click(function() { if(!cellShown){cellShown=true;updateActiveButtons("cell",this);redrawView();}});
+      $("#btn-hide-cell").click(function() { if(cellShown){cellShown=false;updateActiveButtons("cell",this);redrawView();}});
 
       $("#btn-spin").click(function() { viewer.spin(true); });
       $("#btn-stop").click(function() { viewer.spin(false); });
