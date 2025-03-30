@@ -1,12 +1,29 @@
-  <script>
+<script>
+    // Ensure jQuery is ready
     $(document).ready(function() {
+      console.log("Document ready. Initializing 3Dmol viewer..."); // Debug Log 1
+
       // Initialize the viewer
       let element = $("#viewer");
       let config = {
         backgroundColor: "white",
         antialias: true
       };
-      let viewer = $3Dmol.createViewer(element, config);
+      let viewer = null; // Initialize viewer as null
+      try {
+           viewer = $3Dmol.createViewer(element, config);
+           if (!viewer) {
+               console.error("Failed to create 3Dmol viewer instance."); // Error Log
+               alert("Error: Could not initialize the 3Dmol viewer!");
+               return; // Stop if viewer creation failed
+           }
+           console.log("3Dmol viewer created successfully."); // Debug Log 2
+      } catch (e) {
+           console.error("Error creating 3Dmol viewer:", e); // Error Log
+           alert("Error initializing 3Dmol viewer. Check console for details.");
+           return; // Stop script execution
+      }
+
 
       // Define constants
       const a_HgTe = 6.46; // Å
@@ -30,10 +47,11 @@
 
       // Function to generate atom data
       function generateAtomData(cdRatio = 0.3, cellSize = 1) {
+        console.log(`Generating atoms: cdRatio=${cdRatio}, cellSize=${cellSize}`); // Debug Log
         let atoms = [];
         // Calculate the lattice constant based *only* on the passed cdRatio for generation
         const currentGenerationLatticeConstant = a_HgTe * (1 - cdRatio) + a_CdTe * cdRatio;
-        latticeConstant = currentGenerationLatticeConstant; // Update the global one too
+        latticeConstant = currentGenerationLatticeConstant; // Update the global one
 
         for (let i = 0; i < cellSize; i++) {
           for (let j = 0; j < cellSize; j++) {
@@ -42,186 +60,229 @@
               let anionPositions = [[0.25,0.25,0.25], [0.25,0.75,0.75], [0.75,0.25,0.75], [0.75,0.75,0.25]];
               cationPositions.forEach(pos => {
                 let elemType = Math.random() < cdRatio ? "Cd" : "Hg";
-                atoms.push({ elem: elemType, x: (pos[0]+i)*currentGenerationLatticeConstant, y: (pos[1]+j)*currentGenerationLatticeConstant, z: (pos[2]+k)*currentGenerationLatticeConstant });
+                atoms.push({
+                    elem: elemType,
+                    x: (pos[0]+i)*currentGenerationLatticeConstant,
+                    y: (pos[1]+j)*currentGenerationLatticeConstant,
+                    z: (pos[2]+k)*currentGenerationLatticeConstant
+                });
               });
               anionPositions.forEach(pos => {
-                atoms.push({ elem: "Te", x: (pos[0]+i)*currentGenerationLatticeConstant, y: (pos[1]+j)*currentGenerationLatticeConstant, z: (pos[2]+k)*currentGenerationLatticeConstant });
+                atoms.push({
+                    elem: "Te",
+                    x: (pos[0]+i)*currentGenerationLatticeConstant,
+                    y: (pos[1]+j)*currentGenerationLatticeConstant,
+                    z: (pos[2]+k)*currentGenerationLatticeConstant
+                 });
               });
             }
           }
         }
-        atoms.forEach((atom, index) => atom.serial = index); // Add serial ID
+        atoms.forEach((atom, index) => atom.serial = index); // Add serial ID required by some 3Dmol functions
+        console.log(`Generated ${atoms.length} atoms. Lattice constant: ${latticeConstant.toFixed(2)}`); // Debug Log
         return atoms;
       }
 
-     // Modify drawUnitCellOutline to use the potentially updated latticeConstant
+     // Function to draw unit cell outline
        function drawUnitCellOutline() {
+            console.log("Drawing unit cell outline..."); // Debug Log
+            // Clear previous shapes (safer than relying solely on removeAllShapes in renderCore)
             for (let lineId of cellLines) viewer.removeShape(lineId);
             cellLines = [];
-            if (cellLabel) viewer.removeLabel(cellLabel); cellLabel = null;
-            if (!cellShown) return;
+            if (cellLabel) viewer.removeLabel(cellLabel);
+            cellLabel = null;
 
-            // Use the *currently calculated* global lattice constant for drawing
-            // (It's updated in generateAtomData)
-            const cellLength = latticeConstant * currentSupercell; // Use current global value
+            if (!cellShown) {
+                console.log("Cell outline is hidden."); // Debug Log
+                return;
+            }
+
+            // Use the *current global* lattice constant
+            const cellLength = latticeConstant * currentSupercell;
 
             const vertices = [ [0,0,0],[cellLength,0,0],[0,cellLength,0],[cellLength,cellLength,0], [0,0,cellLength],[cellLength,0,cellLength],[0,cellLength,cellLength],[cellLength,cellLength,cellLength] ];
             const edges = [ [0,1],[0,2],[1,3],[2,3],[4,5],[4,6],[5,7],[6,7],[0,4],[1,5],[2,6],[3,7] ];
             edges.forEach(edge => {
-              const start = {x:vertices[edge[0]][0], y:vertices[edge[0]][1], z:vertices[edge[0]][2]};
-              const end = {x:vertices[edge[1]][0], y:vertices[edge[1]][1], z:vertices[edge[1]][2]};
-              let lineId = viewer.addCylinder({ start: start, end: end, radius: 0.05, color: "#555555", dashed: true, dashLength: 0.4, gapLength: 0.2 });
-              cellLines.push(lineId);
+              try {
+                  const start = {x:vertices[edge[0]][0], y:vertices[edge[0]][1], z:vertices[edge[0]][2]};
+                  const end = {x:vertices[edge[1]][0], y:vertices[edge[1]][1], z:vertices[edge[1]][2]};
+                  let lineId = viewer.addCylinder({ start: start, end: end, radius: 0.05, color: "#555555", dashed: true, dashLength: 0.4, gapLength: 0.2 });
+                  if(lineId) cellLines.push(lineId); // Only push if shape added successfully
+               } catch(e) { console.error("Error adding cell cylinder:", e); }
             });
+
             if (currentSupercell === 1) {
-              // Use latticeConstant for the label
-              cellLabel = viewer.addLabel(`a = ${latticeConstant.toFixed(2)} Å`, { position:{x:cellLength/2, y:-1.0, z:-1.0}, backgroundColor:"rgba(255,255,255,0.8)", fontColor:"#333333", fontSize:14, showBackground:true, backgroundOpacity:0.8 });
+              try {
+                  cellLabel = viewer.addLabel(`a = ${latticeConstant.toFixed(2)} Å`, { position:{x:cellLength/2, y:-1.0, z:-1.0}, backgroundColor:"rgba(255,255,255,0.8)", fontColor:"#333333", fontSize:14, showBackground:true, backgroundOpacity:0.8 });
+              } catch(e) { console.error("Error adding cell label:", e); }
             }
+            console.log("Unit cell outline drawn."); // Debug Log
       }
 
-      // Modify addAtomLabels
+      // Function to add atom labels
       function addAtomLabels() {
+          console.log("Adding atom labels..."); // Debug Log
+          // Clear previous labels
           for (let label of atomLabels) viewer.removeLabel(label);
           atomLabels = [];
-          if (!labelsShown || !currentAtoms || currentAtoms.length === 0) return;
+
+          if (!labelsShown || !currentAtoms || currentAtoms.length === 0) {
+              console.log("Labels are hidden or no atoms exist."); // Debug Log
+              return;
+          }
 
           // Use the *current global* lattice constant
-          const baseCellLimit = latticeConstant; // Use current global value
+          const baseCellLimit = latticeConstant;
           const supercellLength = latticeConstant * currentSupercell;
           const center = { x: supercellLength/2, y: supercellLength/2, z: supercellLength/2 };
 
           currentAtoms.forEach(atom => {
-              // Check if atom is within the first unit cell (0,0,0 corner) for labeling
+              // Check if atom is within the first unit cell (0,0,0 corner)
               if (atom.x < baseCellLimit && atom.y < baseCellLimit && atom.z < baseCellLimit &&
                   atom.x >= 0 && atom.y >= 0 && atom.z >= 0) { // Ensure positive coordinates
 
                   let dx = atom.x - center.x, dy = atom.y - center.y, dz = atom.z - center.z;
                   let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-                  const offsetFactor = 1.5; // How far to push label away from atom center
+                  const offsetFactor = 1.5;
                   let labelPos = { x: atom.x, y: atom.y, z: atom.z };
 
-                  // Offset label position slightly away from the *supercell* center
-                  // This helps prevent labels overlapping near the center of the view
                   if (dist > 0.01) {
                       labelPos.x += (dx/dist)*offsetFactor;
                       labelPos.y += (dy/dist)*offsetFactor;
                       labelPos.z += (dz/dist)*offsetFactor;
                   } else {
-                      // Handle atoms exactly at the center (unlikely for off-origin atoms)
-                      // Push slightly along positive X if at center
                        labelPos.x += offsetFactor;
                   }
-                  let labelId = viewer.addLabel(atom.elem, {
-                      position: labelPos,
-                      backgroundColor: "rgba(255,255,255,0.7)",
-                      fontColor: "#333333",
-                      fontSize: 12,
-                      showBackground: true,
-                      backgroundOpacity: 0.5
-                    });
-                  atomLabels.push(labelId);
+
+                  try {
+                      let labelId = viewer.addLabel(atom.elem, {
+                          position: labelPos,
+                          backgroundColor: "rgba(255,255,255,0.7)",
+                          fontColor: "#333333",
+                          fontSize: 12,
+                          showBackground: true,
+                          backgroundOpacity: 0.5
+                        });
+                      if(labelId) atomLabels.push(labelId); // Only push if label added successfully
+                   } catch(e) { console.error("Error adding atom label:", e); }
               }
           });
-          // No separate render needed here, renderCore handles it
+          console.log(`Added ${atomLabels.length} atom labels.`); // Debug Log
       }
 
 
-      // *** CORE RENDERING FUNCTION (Uses existing currentAtoms) ***
+      // *** CORE RENDERING FUNCTION ***
       function renderCore() {
-        viewer.removeAllModels();
-        viewer.removeAllShapes(); // remove shapes like cell lines
-        for (let label of atomLabels) viewer.removeLabel(label); // remove old atom labels
-        atomLabels = [];
-        for (let lineId of cellLines) viewer.removeShape(lineId); // remove old cell lines (redundant with removeAllShapes, but safe)
-        cellLines = [];
-        if (cellLabel) viewer.removeLabel(cellLabel); // remove old cell label
-        cellLabel = null;
+        console.log("--- Starting renderCore ---"); // Debug Log
+        try { // Wrap core rendering in try-catch
+            viewer.removeAllModels();
+            viewer.removeAllShapes();
+            viewer.removeAllLabels(); // Clear all labels explicitly
+            atomLabels = []; // Reset label tracking arrays
+            cellLines = [];
+            cellLabel = null;
 
-        //console.log("Rendering. Atoms:", currentAtoms.length, "Style:", currentViewStyle, "Cell:", cellShown, "Labels:", labelsShown); // Debug Log
+            console.log(`Rendering: Atoms=${currentAtoms.length}, Style=${currentViewStyle}, Cell=${cellShown}, Labels=${labelsShown}`);
 
-        if (!currentAtoms || currentAtoms.length === 0) {
-           console.log("No atoms to render.");
-           viewer.render(); return;
+            if (!currentAtoms || currentAtoms.length === 0) {
+               console.log("No atoms to render.");
+               viewer.render(); // Render empty scene if no atoms
+               return;
+            }
+
+            // Update info panel
+            let cdRatio = parseFloat($("#composition").val());
+            $("#composition-info").html(`Composition: Hg<sub>${(1-cdRatio).toFixed(1)}</sub>Cd<sub>${cdRatio.toFixed(1)}</sub>Te`);
+            $("#lattice-info").text(`Lattice constant: ${latticeConstant.toFixed(2)} Å`);
+
+            // Add atoms to a new model
+            let model = viewer.addModel();
+            if (!model) {
+                 console.error("Failed to add model!"); return;
+            }
+            model.addAtoms(currentAtoms);
+            console.log("Atoms added to model.");
+
+            // Define styles
+            let style = {};
+            const baseStickRadius = 0.1;
+            const ballScale = 0.35;
+            const stickModeAtomScale = 0.15;
+            const colorScheme = { prop: 'elem', map: atomColors };
+
+            const sphereStyle = { colorscheme: colorScheme };
+            const stickStyle = { radius: baseStickRadius, colorscheme: colorScheme };
+
+            switch (currentViewStyle) {
+              case "stick":
+                style = {
+                  stick: stickStyle,
+                  sphere: { ...sphereStyle, scale: stickModeAtomScale }
+                };
+                break;
+              case "ballAndStick":
+                style = {
+                  stick: stickStyle,
+                  sphere: { ...sphereStyle, scale: ballScale }
+                };
+                break;
+              case "spacefill":
+                style = {
+                   sphere: { ...sphereStyle, scale: 1.0 }
+                };
+                break;
+               default:
+                console.warn("Unknown view style:", currentViewStyle); // Warn for unexpected style
+                style = { // Default to ball and stick
+                  stick: stickStyle,
+                  sphere: { ...sphereStyle, scale: ballScale }
+                };
+                break;
+            }
+
+            // Apply the chosen style
+            viewer.setStyle({}, style);
+            console.log("Applied style:", currentViewStyle, style);
+
+            // Add cell outline and labels if requested
+            // These functions now handle their own console logging
+            if (cellShown) drawUnitCellOutline();
+            if (labelsShown) addAtomLabels();
+
+            viewer.zoomTo(); // Adjust camera
+            viewer.render(); // Draw everything
+            console.log("--- renderCore finished ---"); // Debug Log
+
+        } catch (e) {
+            console.error("!!! FATAL ERROR in renderCore:", e); // Log any critical error during rendering
+            alert("A critical error occurred during rendering. Check the console (F12).");
         }
-
-        // Update info panel (using the global latticeConstant updated during generation)
-        let cdRatio = parseFloat($("#composition").val()); // Get current ratio for text display
-        $("#composition-info").html(`Composition: Hg<sub>${(1-cdRatio).toFixed(1)}</sub>Cd<sub>${cdRatio.toFixed(1)}</sub>Te`);
-        $("#lattice-info").text(`Lattice constant: ${latticeConstant.toFixed(2)} Å`);
-
-        // Add the atoms as a new model
-        let model = viewer.addModel();
-        model.addAtoms(currentAtoms);
-
-        // --- Bond Calculation ---
-        // 3Dmol calculates bonds automatically based on element types and distances
-        // unless explicitly told not to. We rely on this default.
-        // If sticks are *still* missing, uncommenting model.computeBonds() might help,
-        // but it shouldn't usually be necessary.
-        // model.computeBonds();
-
-        // Define styles
-        let style = {};
-        const baseStickRadius = 0.1;
-        const ballScale = 0.35;
-        const stickModeAtomScale = 0.15; // Slightly larger atoms for stick mode visibility
-        const colorScheme = { prop: 'elem', map: atomColors };
-
-        const sphereStyle = { colorscheme: colorScheme };
-        const stickStyle = { radius: baseStickRadius, colorscheme: colorScheme }; // Rely on default bond calculation
-
-        switch (currentViewStyle) {
-          case "stick":
-            // Show sticks and very small spheres at atom positions
-            style = {
-              stick: stickStyle,
-              sphere: { ...sphereStyle, scale: stickModeAtomScale }
-            };
-            break;
-          case "ballAndStick":
-            // Show sticks and medium-sized spheres
-            style = {
-              stick: stickStyle,
-              sphere: { ...sphereStyle, scale: ballScale }
-            };
-            break;
-          case "spacefill":
-            // Show large spheres (representing VDW radii), hide sticks implicitly
-            style = {
-               sphere: { ...sphereStyle, scale: 1.0 } // Scale 1 typically means VDW radius
-               // No 'stick' definition needed; omitting it hides sticks
-            };
-            break;
-        }
-
-        // Apply the chosen style to all atoms ({})
-        viewer.setStyle({}, style);
-        //console.log("Applied style:", style); // Debug Log
-
-        // Add cell outline and labels if requested (after setting style)
-        if (cellShown) drawUnitCellOutline();
-        if (labelsShown) addAtomLabels();
-
-        viewer.zoomTo(); // Adjust camera to fit the model
-        viewer.render(); // Draw everything
-        //console.log("Render complete."); // Debug Log
       }
 
       // *** Function to Regenerate Atoms AND Render ***
       function regenerateAndRender() {
-        let cdRatio = parseFloat($("#composition").val());
-        $("#composition-value").text(`x = ${cdRatio.toFixed(1)}`);
-        // Generate new atom data (this also updates the global latticeConstant)
-        currentAtoms = generateAtomData(cdRatio, currentSupercell);
-        //console.log("Generated new atoms:", currentAtoms.length); // Debug Log
-        renderCore(); // Render the newly generated structure
+        console.log("Regenerating atoms and rendering..."); // Debug Log
+        try { // Wrap in try-catch
+            let cdRatio = parseFloat($("#composition").val());
+            $("#composition-value").text(`x = ${cdRatio.toFixed(1)}`);
+            // Generate new atom data (this updates the global latticeConstant)
+            currentAtoms = generateAtomData(cdRatio, currentSupercell);
+            renderCore(); // Render the newly generated structure
+        } catch(e) {
+            console.error("Error in regenerateAndRender:", e);
+            alert("Error regenerating structure. Check console.");
+        }
       }
 
       // *** Function to Update View Options AND Render ***
-      // This function is simpler - just redraws using existing atoms
       function redrawView() {
-          //console.log("Redrawing view..."); // Debug Log
-          renderCore(); // Re-render with existing atoms but potentially new style/labels/cell
+          console.log("Redrawing view (style/labels/cell change)..."); // Debug Log
+          try { // Wrap in try-catch
+            renderCore(); // Re-render with existing atoms but potentially new style/labels/cell
+           } catch(e) {
+               console.error("Error in redrawView:", e);
+               alert("Error redrawing view. Check console.");
+           }
       }
 
 
@@ -233,13 +294,16 @@
             case "supercell": buttons="#btn-1x1x1, #btn-2x2x2"; break;
             case "labels": buttons="#btn-show-labels, #btn-hide-labels"; break;
             case "cell": buttons="#btn-show-cell, #btn-hide-cell"; break;
-            default: return;
+            default: console.warn("Unknown button group:", group); return; // Warn if group is unknown
         }
         $(buttons).removeClass("active");
         $(activeButton).addClass("active");
+        console.log(`Active button updated: Group=${group}, Button=${$(activeButton).attr('id')}`); // Debug Log
       }
 
       // --- Event listeners ---
+      console.log("Setting up event listeners..."); // Debug Log
+
       $("#composition").on("input", regenerateAndRender);
 
       $("#btn-1x1x1").click(function() { if(currentSupercell!==1){currentSupercell=1; updateActiveButtons("supercell",this); regenerateAndRender();}});
@@ -255,28 +319,42 @@
       $("#btn-show-cell").click(function() { if(!cellShown){cellShown=true; updateActiveButtons("cell",this); redrawView();}});
       $("#btn-hide-cell").click(function() { if(cellShown){cellShown=false; updateActiveButtons("cell",this); redrawView();}});
 
-      $("#btn-spin").click(function() { viewer.spin(true); });
-      $("#btn-stop").click(function() { viewer.spin(false); });
+      $("#btn-spin").click(function() { viewer.spin(true); console.log("Spin enabled");});
+      $("#btn-stop").click(function() { viewer.spin(false); console.log("Spin disabled");});
 
       $("#btn-screenshot").click(function() {
-        let imageData = viewer.pngURI();
-        let link = document.createElement('a');
-        link.download = 'HgCdTe-zincblende.png';
-        link.href = imageData;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        try {
+            console.log("Generating screenshot...");
+            let imageData = viewer.pngURI();
+            if(!imageData) { console.error("Failed to get image data from viewer."); return; }
+            let link = document.createElement('a');
+            link.download = 'HgCdTe-zincblende.png';
+            link.href = imageData;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            console.log("Screenshot download initiated.");
+        } catch(e) {
+            console.error("Error generating screenshot:", e);
+            alert("Error generating screenshot. Check console.");
+        }
       });
 
       // Resize viewer when window resizes
-      $(window).on('resize', function() { viewer.resize(); });
+      $(window).on('resize', function() {
+         console.log("Window resized, resizing viewer."); // Debug Log
+         if (viewer) viewer.resize();
+      });
 
       // --- Initial Load ---
+      console.log("Performing initial setup and render..."); // Debug Log
       updateActiveButtons("visualization", "#btn-ball-stick");
       updateActiveButtons("supercell", "#btn-1x1x1");
       updateActiveButtons("labels", "#btn-hide-labels");
       updateActiveButtons("cell", "#btn-hide-cell");
       regenerateAndRender(); // Initial generation and render
 
+      console.log("Initialization complete."); // Debug Log
+
     }); // End document ready
-  </script>
+</script>
