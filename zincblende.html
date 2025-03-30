@@ -1,609 +1,191 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>HgCdTe Zincblende Structure Viewer</title>
-  <!-- Use the latest versions -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/3dmol/2.1.0/3Dmol-min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <title>HgCdTe Zincblende Structure</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://3Dmol.csb.pitt.edu/build/3Dmol-min.js"></script>
   <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      overflow: hidden;
-      background-color: #fafafa;
-      display: flex; /* Use flexbox for layout */
-      height: 100vh;
-    }
-    #container {
-      display: flex;
-      flex-grow: 1; /* Allow container to take remaining space if body wasn't full height */
-      height: 100%; /* Ensure container fills body height */
-    }
-    #viewer {
-      flex: 1; /* Viewer takes available space */
+    .mol-container {
+      width: 100%;
+      height: 400px;
       position: relative;
-      min-width: 0; /* Prevent flex item from overflowing */
     }
-    #controls {
-      width: 280px; /* Slightly wider for better spacing */
-      flex-shrink: 0; /* Prevent controls from shrinking */
-      padding: 20px;
-      background-color: white;
-      border-left: 1px solid #eaeaea;
-      overflow-y: auto;
-      box-shadow: -2px 0 10px rgba(0, 0, 0, 0.05);
-    }
-    .control-group {
-      margin-bottom: 25px; /* Increased spacing */
-    }
-    .control-title {
-      font-weight: 600;
-      margin-bottom: 10px; /* Increased spacing */
-      color: #333;
-      font-size: 0.95em; /* Slightly smaller title */
+    .controls {
+      margin: 20px 0;
     }
     button {
-      padding: 7px 14px; /* Slightly larger */
-      margin: 4px 2px; /* Adjusted margin */
-      cursor: pointer;
-      background-color: #f5f5f5;
-      border: 1px solid #dcdcdc; /* Slightly darker border */
+      margin: 5px;
+      padding: 8px 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
       border-radius: 4px;
-      transition: background-color 0.2s, border-color 0.2s;
-      font-size: 14px;
+      cursor: pointer;
     }
     button:hover {
-      background-color: #e9e9e9;
-      border-color: #c9c9c9;
-    }
-    button.active {
-      background-color: #e0e0e0;
-      border-color: #b0b0b0;
-      font-weight: 600; /* Highlight active button more */
-    }
-    .slider {
-      width: 100%;
-      height: 6px;
-      -webkit-appearance: none;
-      appearance: none;
-      background: #e0e0e0;
-      outline: none;
-      border-radius: 3px;
-      cursor: pointer;
-    }
-    .slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: #4a90e2;
-      cursor: pointer;
-    }
-    .slider::-moz-range-thumb { /* Firefox */
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        background: #4a90e2;
-        cursor: pointer;
-        border: none; /* Remove default border */
-    }
-    #composition-value {
-        text-align: center;
-        margin-top: 8px;
-        font-size: 0.9em;
-        color: #555;
-    }
-
-    .info-panel {
-      position: absolute;
-      bottom: 15px;
-      left: 15px;
-      background-color: rgba(255, 255, 255, 0.92); /* Slightly less transparent */
-      padding: 12px 15px;
-      border-radius: 6px;
-      font-size: 13px; /* Slightly smaller */
-      max-width: 280px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-      z-index: 100;
-    }
-    .info-panel h3 {
-      margin-top: 0;
-      margin-bottom: 8px;
-      color: #222;
-      font-size: 1.1em;
-    }
-    .legend {
-      display: flex;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-    .legend-color {
-      width: 14px;
-      height: 14px;
-      margin-right: 8px;
-      border-radius: 50%;
-      border: 1px solid rgba(0, 0, 0, 0.1);
-      flex-shrink: 0;
-    }
-    hr {
-      border: none;
-      border-top: 1px solid #eaeaea;
-      margin: 12px 0;
-    }
-    .structure-info p {
-        font-size: 0.85em;
-        line-height: 1.4;
-        margin: 4px 0;
-        color: #444;
-    }
-    .structure-info p > strong {
-        color: #111;
+      background-color: #45a049;
     }
   </style>
 </head>
 <body>
-  <!-- No container needed if body is flex -->
-  <div id="viewer">
-    <div class="info-panel">
-      <h3>HgCdTe Zincblende Structure</h3>
-      <div id="lattice-info">Lattice constant: ... Å</div>
-      <div id="composition-info">Composition: ...</div>
-      <div>Space group: F-43m (216)</div>
-      <hr>
-      <div class="legend">
-        <div class="legend-color" style="background-color:#E000E0;"></div> <div>Hg (Magenta)</div>
-      </div>
-      <div class="legend">
-        <div class="legend-color" style="background-color:#CCCCCC;"></div> <div>Cd (Light Grey)</div>
-      </div>
-      <div class="legend">
-        <div class="legend-color" style="background-color:#33CC33;"></div> <div>Te (Green)</div>
-      </div>
-    </div>
+  <h2>2×2×2 HgCdTe Zincblende Structure</h2>
+  <div class="controls">
+    <button id="sphere">Sphere</button>
+    <button id="stick">Stick</button>
+    <button id="ball-stick">Ball and Stick</button>
+    <button id="line">Line</button>
+    <button id="cross">Cross</button>
   </div>
-  <div id="controls">
-    <h2>Controls</h2>
-
-    <div class="control-group">
-      <div class="control-title">Composition (x in Hg₁₋ₓCdₓTe)</div>
-      <input type="range" id="composition" class="slider" min="0" max="1" step="0.05" value="0.3"> <!-- Finer step -->
-      <div id="composition-value">x = 0.30</div>
-    </div>
-
-    <div class="control-group">
-      <div class="control-title">Visualization Style</div>
-      <button id="btn-stick">Stick</button>
-      <button id="btn-ball-stick">Ball & Stick</button>
-      <button id="btn-spacefill">Spacefill</button>
-    </div>
-
-    <div class="control-group">
-      <div class="control-title">Unit Cell Box</div>
-      <button id="btn-show-cell">Show Box</button>
-      <button id="btn-hide-cell">Hide Box</button>
-    </div>
-
-    <div class="control-group">
-      <div class="control-title">Atom Labels (Unit Cell Only)</div>
-      <button id="btn-show-labels">Show Labels</button>
-      <button id="btn-hide-labels">Hide Labels</button>
-    </div>
-
-    <div class="control-group">
-      <div class="control-title">Supercell Size</div>
-      <button id="btn-1x1x1">1×1×1</button>
-      <button id="btn-2x2x2">2×2×2</button>
-      <!-- Add more buttons if desired e.g., 3x3x3 -->
-    </div>
-
-    <div class="control-group">
-      <div class="control-title">Animation</div>
-      <button id="btn-spin">Spin</button>
-      <button id="btn-stop">Stop</button>
-    </div>
-
-    <div class="control-group">
-      <div class="control-title">Export</div>
-      <button id="btn-screenshot">Screenshot (PNG)</button>
-    </div>
-
-    <div class="control-group structure-info">
-      <div class="control-title">Structure Information</div>
-      <p><strong>Hg₁₋ₓCdₓTe (MCT)</strong></p>
-      <p>- Ternary semiconductor alloy</p>
-      <p>- Zincblende structure (F-43m)</p>
-      <p>- Vegard's Law approx. for lattice</p>
-      <p>- Used in infrared detectors</p>
-      <p>- Tunable Bandgap: ~0 to 1.5 eV</p>
-    </div>
-  </div>
-
+  <div id="container" class="mol-container"></div>
+  
   <script>
     $(document).ready(function() {
-      // Initialize the viewer
-      const element = $("#viewer");
-      const config = {
-        backgroundColor: "white",
-        antialias: true,
-        quality: 'high' // Request higher quality rendering
-      };
-      const viewer = $3Dmol.createViewer(element, config);
-
-      // Define constants
-      const A_HGTE = 6.461; // Å - More precise
-      const A_CDTE = 6.482; // Å - More precise
-      const ATOM_COLORS = {
-        "Hg": "#E000E0", // Magenta
-        "Cd": "#CCCCCC", // Light Grey
-        "Te": "#33CC33"  // Green
-      };
-      const BASIS_CATIONS = [[0,0,0], [0,0.5,0.5], [0.5,0,0.5], [0.5,0.5,0]];
-      const BASIS_ANIONS = [[0.25,0.25,0.25], [0.25,0.75,0.75], [0.75,0.25,0.75], [0.75,0.75,0.25]];
-
-      // State variables
-      let latticeConstant = A_HGTE; // Will be updated based on composition
-      let labelsShown = false;
-      let cellShown = false;
-      let currentViewStyle = "ballAndStick"; // Initial style
-      let currentSupercell = 1;
-      let currentAtoms = []; // Stores the currently generated atom data (serial, elem, x, y, z)
-      let activeLabels = []; // Store label objects added by 3Dmol
-      let activeCellShapes = []; // Store shape objects for cell lines
-
-      // Function to generate atom data for a given composition and supercell size
-      function generateAtomData(cdRatio, supercellN) {
-        const atoms = [];
-        // Use Vegard's Law to calculate the lattice constant for the alloy
-        const currentLatticeConstant = A_HGTE * (1 - cdRatio) + A_CDTE * cdRatio;
-        latticeConstant = currentLatticeConstant; // Update global state
-
-        let serialCounter = 0;
-        for (let i = 0; i < supercellN; i++) {
-          for (let j = 0; j < supercellN; j++) {
-            for (let k = 0; k < supercellN; k++) {
-              // Add cations (Hg or Cd) based on random probability
-              BASIS_CATIONS.forEach(pos => {
-                const elemType = Math.random() < cdRatio ? "Cd" : "Hg";
-                atoms.push({
-                  serial: serialCounter++,
-                  elem: elemType,
-                  x: (pos[0] + i) * currentLatticeConstant,
-                  y: (pos[1] + j) * currentLatticeConstant,
-                  z: (pos[2] + k) * currentLatticeConstant
-                });
-              });
-              // Add anions (Te)
-              BASIS_ANIONS.forEach(pos => {
-                atoms.push({
-                  serial: serialCounter++,
-                  elem: "Te",
-                  x: (pos[0] + i) * currentLatticeConstant,
-                  y: (pos[1] + j) * currentLatticeConstant,
-                  z: (pos[2] + k) * currentLatticeConstant
-                });
+      // Initialize viewer
+      let element = $('#container');
+      let config = { backgroundColor: 'white' };
+      let viewer = $3Dmol.createViewer(element, config);
+      
+      // Lattice constant for HgCdTe (approximated)
+      const a = 6.5; 
+      
+      // Create a 2x2x2 unit cell
+      let atoms = [];
+      
+      // Function to add atoms to the cell
+      function addAtom(x, y, z, elem) {
+        atoms.push({
+          "elem": elem,
+          "x": x,
+          "y": y,
+          "z": z
+        });
+      }
+      
+      // Generate the 2x2x2 zincblende structure
+      for (let i = 0; i < 2; i++) {
+        for (let j = 0; j < 2; j++) {
+          for (let k = 0; k < 2; k++) {
+            // Base positions within a unit cell
+            const baseX = i * a;
+            const baseY = j * a;
+            const baseZ = k * a;
+            
+            // Group 1: Hg at (0,0,0), (0,0.5,0.5), (0.5,0,0.5), (0.5,0.5,0)
+            addAtom(baseX + 0,     baseY + 0,     baseZ + 0,     'Hg');
+            addAtom(baseX + 0,     baseY + 0.5*a, baseZ + 0.5*a, 'Hg');
+            addAtom(baseX + 0.5*a, baseY + 0,     baseZ + 0.5*a, 'Hg');
+            addAtom(baseX + 0.5*a, baseY + 0.5*a, baseZ + 0,     'Hg');
+            
+            // Group 2: Cd at positions similar to Hg but with probability (for visual distinction)
+            // In reality these would be randomly distributed Hg/Cd sites
+            if (Math.random() < 0.5) {
+              addAtom(baseX + 0.25*a, baseY + 0.25*a, baseZ + 0.25*a, 'Cd');
+              addAtom(baseX + 0.25*a, baseY + 0.75*a, baseZ + 0.75*a, 'Cd');
+              addAtom(baseX + 0.75*a, baseY + 0.25*a, baseZ + 0.75*a, 'Cd');
+              addAtom(baseX + 0.75*a, baseY + 0.75*a, baseZ + 0.25*a, 'Cd');
+            } else {
+              addAtom(baseX + 0.25*a, baseY + 0.25*a, baseZ + 0.25*a, 'Hg');
+              addAtom(baseX + 0.25*a, baseY + 0.75*a, baseZ + 0.75*a, 'Hg');
+              addAtom(baseX + 0.75*a, baseY + 0.25*a, baseZ + 0.75*a, 'Hg');
+              addAtom(baseX + 0.75*a, baseY + 0.75*a, baseZ + 0.25*a, 'Hg');
+            }
+            
+            // Te atoms at tetrahedral positions
+            addAtom(baseX + 0.75*a, baseY + 0.75*a, baseZ + 0.75*a, 'Te');
+            addAtom(baseX + 0.75*a, baseY + 0.25*a, baseZ + 0.25*a, 'Te');
+            addAtom(baseX + 0.25*a, baseY + 0.75*a, baseZ + 0.25*a, 'Te');
+            addAtom(baseX + 0.25*a, baseY + 0.25*a, baseZ + 0.75*a, 'Te');
+          }
+        }
+      }
+      
+      // Create model with the atoms
+      let m = viewer.addModel();
+      for (let atom of atoms) {
+        m.addAtom(atom);
+      }
+      
+      // Calculate and add bonds
+      m.addBonds({
+        atomPair: calculateBonds(atoms),
+        bondOrder: 1
+      });
+      
+      // Function to calculate bonds based on distance
+      function calculateBonds(atoms) {
+        let bonds = [];
+        const bondThreshold = 3.5; // Adjust based on your desired bond length
+        
+        for (let i = 0; i < atoms.length; i++) {
+          for (let j = i + 1; j < atoms.length; j++) {
+            const a1 = atoms[i];
+            const a2 = atoms[j];
+            
+            // Calculate distance
+            const dx = a1.x - a2.x;
+            const dy = a1.y - a2.y;
+            const dz = a1.z - a2.z;
+            const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+            
+            // Only bond if atoms are close enough
+            if (dist < bondThreshold) {
+              bonds.push({
+                indices: [i, j],
+                order: 1
               });
             }
           }
         }
-        console.log(`Generated ${atoms.length} atoms for ${supercellN}x${supercellN}x${supercellN} supercell with x=${cdRatio.toFixed(2)}`);
-        return atoms;
+        
+        return bonds;
       }
-
-      // --- Drawing Functions (separated for clarity) ---
-
-      function removeCurrentLabels() {
-        activeLabels.forEach(label => viewer.removeLabel(label));
-        activeLabels = [];
-      }
-
-      function addAtomLabelsToView() {
-        removeCurrentLabels(); // Clear previous labels first
-        if (!labelsShown || !currentAtoms || currentAtoms.length === 0) return;
-
-        // Only label atoms within the first unit cell (0,0,0) to avoid clutter
-        const baseCellLimit = latticeConstant; // Use the actual lattice constant
-        const labelStyle = {
-            backgroundColor: "rgba(255,255,255,0.75)",
-            fontColor: "#111111",
-            fontSize: 11,
-            showBackground: true,
-            backgroundOpacity: 0.6,
-            borderWidth: 0.5,
-            borderColor: 'grey'
-        };
-
-        currentAtoms.forEach(atom => {
-          // Check if atom is within the boundaries of the first unit cell
-          if (atom.x >= -1e-6 && atom.x < baseCellLimit &&
-              atom.y >= -1e-6 && atom.y < baseCellLimit &&
-              atom.z >= -1e-6 && atom.z < baseCellLimit)
-          {
-             // Simple label at atom position - offset can be complex, keep simple for now
-             const label = viewer.addLabel(atom.elem, { ...labelStyle, position: { x: atom.x, y: atom.y, z: atom.z } });
-             activeLabels.push(label);
-          }
-        });
-         console.log(`Added ${activeLabels.length} labels.`);
-         viewer.render(); // Render label changes
-      }
-
-
-      function removeCurrentCellOutline() {
-        activeCellShapes.forEach(shape => viewer.removeShape(shape));
-        activeCellShapes = [];
-      }
-
-      function drawUnitCellOutline() {
-        removeCurrentCellOutline();
-        if (!cellShown) return;
-
-        const cellLength = latticeConstant * currentSupercell;
-        const lineStyle = {
-            radius: 0.04,
-            color: "#444444",
-            dashed: true,
-            dashLength: 0.3,
-            gapLength: 0.2
-        };
-
-        // Define vertices of the supercell box
-        const vertices = [
-          {x:0, y:0, z:0}, {x:cellLength, y:0, z:0}, {x:0, y:cellLength, z:0}, {x:cellLength, y:cellLength, z:0},
-          {x:0, y:0, z:cellLength}, {x:cellLength, y:0, z:cellLength}, {x:0, y:cellLength, z:cellLength}, {x:cellLength, y:cellLength, z:cellLength}
-        ];
-        // Define edges connecting vertices (indices into vertices array)
-        const edges = [
-          [0,1], [0,2], [1,3], [2,3], [4,5], [4,6], [5,7], [6,7],
-          [0,4], [1,5], [2,6], [3,7]
-        ];
-
-        edges.forEach(edgeIndices => {
-          const start = vertices[edgeIndices[0]];
-          const end = vertices[edgeIndices[1]];
-          const shape = viewer.addCylinder({ start: start, end: end, ...lineStyle });
-          activeCellShapes.push(shape);
-        });
-        console.log(`Added ${activeCellShapes.length} cell outline shapes.`);
-        viewer.render(); // Render shape changes
-      }
-
-
-      // --- CORE RENDERING FUNCTION ---
-      // This function assumes `currentAtoms` is already populated correctly.
-      // It focuses only on applying styles, labels, and cell outlines.
-      function renderStructure() {
-        viewer.removeAllModels(); // Start fresh for atom data
-        removeCurrentLabels();    // Clear any existing labels
-        removeCurrentCellOutline(); // Clear any existing cell lines
-
-        if (!currentAtoms || currentAtoms.length === 0) {
-            viewer.render(); // Render empty viewer if no atoms
-            return;
+      
+      // Set atom styles and render
+      setStyle('ball-stick');
+      
+      // Buttons for different visualization styles
+      $('#sphere').click(function() { setStyle('sphere'); });
+      $('#stick').click(function() { setStyle('stick'); });
+      $('#ball-stick').click(function() { setStyle('ball-stick'); });
+      $('#line').click(function() { setStyle('line'); });
+      $('#cross').click(function() { setStyle('cross'); });
+      
+      function setStyle(style) {
+        if (style === 'sphere') {
+          m.setStyle({}, {sphere: {scale: 0.7}});
+        } else if (style === 'stick') {
+          m.setStyle({}, {stick: {radius: 0.2}});
+        } else if (style === 'ball-stick') {
+          m.setStyle({}, {sphere: {scale: 0.3}, stick: {radius: 0.15}});
+        } else if (style === 'line') {
+          m.setStyle({}, {line: {}});
+        } else if (style === 'cross') {
+          m.setStyle({}, {cross: {lineWidth: 5}});
         }
-
-        // Add the atoms to a new model
-        const model = viewer.addModel();
-        model.addAtoms(currentAtoms);
-
-        // Define visualization styles
-        const baseStickRadius = 0.08;
-        const ballScale = 0.30;
-        const stickModeAtomScale = 0.0; // Make atoms invisible in pure stick mode
-
-        let styleSpec = {};
-        const colorScheme = { prop: 'elem', map: ATOM_COLORS };
-
-        // *** THIS IS THE KEY FIX AREA ***
-        switch (currentViewStyle) {
-          case "stick":
-            styleSpec = {
-              stick: {
-                radius: baseStickRadius,
-                colorscheme: colorScheme,
-                bonds: true // CRITICAL: Tell 3Dmol to calculate bonds for sticks
-              },
-              sphere: { // Make spheres effectively invisible in stick mode
-                 scale: stickModeAtomScale,
-                 colorscheme: colorScheme
-              }
-            };
-            console.log("Applying STICK style with bonds=true");
-            break;
-          case "ballAndStick":
-            styleSpec = {
-              stick: {
-                radius: baseStickRadius,
-                colorscheme: colorScheme,
-                bonds: true // CRITICAL: Also needed here for the sticks
-              },
-              sphere: {
-                scale: ballScale,
-                colorscheme: colorScheme
-              }
-            };
-             console.log("Applying BALL & STICK style with bonds=true");
-            break;
-          case "spacefill":
-            styleSpec = {
-              sphere: {
-                colorscheme: colorScheme,
-                scale: 1.0 // Default spacefill uses vdW radii, ensure full size
-              }
-            };
-            console.log("Applying SPACEFILL style");
-            break;
-        }
-        viewer.setStyle({}, styleSpec); // Apply the chosen style to all atoms
-
-        // Add labels and cell outline if requested (after atoms are styled)
-        if (labelsShown) addAtomLabelsToView(); // Re-add labels
-        if (cellShown) drawUnitCellOutline();   // Re-draw cell outline
-
+        
+        // Set atom colors
+        m.setStyle({elem: 'Hg'}, {color: '0x808080'}); // Gray for mercury
+        m.setStyle({elem: 'Cd'}, {color: '0xFFD700'}); // Gold for cadmium
+        m.setStyle({elem: 'Te'}, {color: '0x8B4513'}); // Brown for tellurium
+        
         viewer.zoomTo();
         viewer.render();
-        console.log("Render complete.");
       }
-
-      // --- Update UI Functions ---
-
-      // Update Info Panel text
-      function updateInfoPanel() {
-          const cdRatio = parseFloat($("#composition").val());
-          $("#composition-info").html(`Composition: Hg<sub>${(1 - cdRatio).toFixed(2)}</sub>Cd<sub>${cdRatio.toFixed(2)}</sub>Te`);
-          $("#lattice-info").text(`Lattice constant (a): ${latticeConstant.toFixed(3)} Å`); // More precision
-      }
-
-      // Update slider text display
-      function updateCompositionDisplay() {
-          const cdRatio = parseFloat($("#composition").val());
-           $("#composition-value").text(`x = ${cdRatio.toFixed(2)}`);
-      }
-
-      // Function to update active button styling visually
-      function updateActiveButtons(groupSelector, activeButton) {
-        $(groupSelector).removeClass("active");
-        $(activeButton).addClass("active");
-      }
-
-      // --- Combined Action Functions ---
-
-      // Regenerates atoms AND renders everything (for composition or supercell changes)
-      function regenerateAndRender() {
-          console.log("Regenerating atoms and rendering...");
-          const cdRatio = parseFloat($("#composition").val());
-          updateCompositionDisplay(); // Update slider text first
-          currentAtoms = generateAtomData(cdRatio, currentSupercell); // Regenerate atom data
-          updateInfoPanel(); // Update info panel based on new lattice constant/composition
-          renderStructure(); // Render the new atoms with current styles/options
-      }
-
-      // Redraws the view with existing atoms (for style, labels, cell changes)
-      function redrawView() {
-          console.log("Redrawing view (style/labels/cell)...");
-          // No need to regenerate atoms, just re-apply styles/shapes/labels
-          renderStructure();
-      }
-
-
-      // --- Event Listeners ---
-      $("#composition").on("input", () => {
-        // Update display immediately while dragging
-        updateCompositionDisplay();
-      });
-      $("#composition").on("change", () => {
-        // Regenerate only when the slider is released (less demanding)
-        regenerateAndRender();
-      });
-
-      // Supercell Buttons
-      $("#btn-1x1x1").click(function() {
-        if (currentSupercell !== 1) {
-          currentSupercell = 1;
-          updateActiveButtons("#btn-1x1x1, #btn-2x2x2", this);
-          regenerateAndRender();
-        }
-      });
-      $("#btn-2x2x2").click(function() {
-        if (currentSupercell !== 2) {
-          currentSupercell = 2;
-          updateActiveButtons("#btn-1x1x1, #btn-2x2x2", this);
-          regenerateAndRender();
-        }
-      });
-
-      // Visualization Style Buttons
-      $("#btn-stick").click(function() {
-        if (currentViewStyle !== "stick") {
-          currentViewStyle = "stick";
-          updateActiveButtons("#btn-stick, #btn-ball-stick, #btn-spacefill", this);
-          redrawView();
-        }
-      });
-      $("#btn-ball-stick").click(function() {
-        if (currentViewStyle !== "ballAndStick") {
-          currentViewStyle = "ballAndStick";
-          updateActiveButtons("#btn-stick, #btn-ball-stick, #btn-spacefill", this);
-          redrawView();
-        }
-      });
-      $("#btn-spacefill").click(function() {
-        if (currentViewStyle !== "spacefill") {
-          currentViewStyle = "spacefill";
-          updateActiveButtons("#btn-stick, #btn-ball-stick, #btn-spacefill", this);
-          redrawView();
-        }
-      });
-
-      // Label Buttons
-      $("#btn-show-labels").click(function() {
-        if (!labelsShown) {
-          labelsShown = true;
-          updateActiveButtons("#btn-show-labels, #btn-hide-labels", this);
-          addAtomLabelsToView(); // Just add labels, no full redraw needed if atoms exist
-        }
-      });
-      $("#btn-hide-labels").click(function() {
-        if (labelsShown) {
-          labelsShown = false;
-          updateActiveButtons("#btn-show-labels, #btn-hide-labels", this);
-          removeCurrentLabels(); // Just remove labels
-        }
-      });
-
-      // Unit Cell Box Buttons
-      $("#btn-show-cell").click(function() {
-        if (!cellShown) {
-          cellShown = true;
-          updateActiveButtons("#btn-show-cell, #btn-hide-cell", this);
-          drawUnitCellOutline(); // Just draw outline
-        }
-      });
-      $("#btn-hide-cell").click(function() {
-        if (cellShown) {
-          cellShown = false;
-          updateActiveButtons("#btn-show-cell, #btn-hide-cell", this);
-          removeCurrentCellOutline(); // Just remove outline
-        }
-      });
-
-      // Animation Buttons
-      $("#btn-spin").click(function() { viewer.spin(true); });
-      $("#btn-stop").click(function() { viewer.spin(false); });
-
-      // Screenshot Button
-      $("#btn-screenshot").click(function() {
-        const imageData = viewer.pngURI();
-        const link = document.createElement('a');
-        const cdRatio = parseFloat($("#composition").val());
-        link.download = `HgCdTe_x${cdRatio.toFixed(2)}_${currentSupercell}x${currentSupercell}.png`;
-        link.href = imageData;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      });
-
-      // Resize listener
-      $(window).on('resize', function() { viewer.resize(); });
-
-      // --- Initial Load ---
-      function initialize() {
-        console.log("Initializing viewer...");
-        // Set initial active buttons visually
-        updateActiveButtons("#btn-stick, #btn-ball-stick, #btn-spacefill", "#btn-ball-stick");
-        updateActiveButtons("#btn-1x1x1, #btn-2x2x2", "#btn-1x1x1");
-        updateActiveButtons("#btn-show-labels, #btn-hide-labels", "#btn-hide-labels");
-        updateActiveButtons("#btn-show-cell, #btn-hide-cell", "#btn-hide-cell");
-
-        // Perform the initial generation and rendering
-        regenerateAndRender();
-        console.log("Initialization complete.");
-      }
-
-      initialize(); // Run initialization
-
-    }); // End document ready
+      
+      // Add unit cell box
+      let cellBox = {
+        corner: {x: 0, y: 0, z: 0},
+        dimensions: {w: 2*a, h: 2*a, d: 2*a}
+      };
+      viewer.addBox(cellBox);
+      
+      // Set initial view
+      viewer.setView([0, 0, 0, 1]);
+      viewer.zoom(0.8);
+      viewer.rotate(20, 'y');
+      viewer.rotate(30, 'x');
+      viewer.render();
+    });
   </script>
 </body>
 </html>
