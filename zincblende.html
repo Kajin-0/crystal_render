@@ -200,6 +200,7 @@ $(document).ready(function() {
 
   // --- Event listeners ---
   $("#composition").on("input", regenerateAndRender);
+  
   $("#btn-1x1x1").click(function() { 
     if(currentSupercell!==1){
       currentSupercell=1;
@@ -207,6 +208,7 @@ $(document).ready(function() {
       regenerateAndRender();
     }
   });
+  
   $("#btn-2x2x2").click(function() { 
     if(currentSupercell!==2){
       currentSupercell=2;
@@ -222,6 +224,7 @@ $(document).ready(function() {
       redrawView();
     }
   });
+  
   $("#btn-ball-stick").click(function() { 
     if(currentViewStyle!=="ballAndStick"){
       currentViewStyle="ballAndStick";
@@ -229,6 +232,7 @@ $(document).ready(function() {
       redrawView();
     }
   });
+  
   $("#btn-spacefill").click(function() { 
     if(currentViewStyle!=="spacefill"){
       currentViewStyle="spacefill";
@@ -244,6 +248,7 @@ $(document).ready(function() {
       redrawView();
     }
   });
+  
   $("#btn-hide-labels").click(function() { 
     if(labelsShown){
       labelsShown=false;
@@ -251,6 +256,7 @@ $(document).ready(function() {
       redrawView();
     }
   });
+  
   $("#btn-show-cell").click(function() { 
     if(!cellShown){
       cellShown=true;
@@ -258,6 +264,7 @@ $(document).ready(function() {
       redrawView();
     }
   });
+  
   $("#btn-hide-cell").click(function() { 
     if(cellShown){
       cellShown=false;
@@ -268,6 +275,7 @@ $(document).ready(function() {
 
   $("#btn-spin").click(function() { viewer.spin(true); });
   $("#btn-stop").click(function() { viewer.spin(false); });
+  
   $("#btn-screenshot").click(function() {
     let imageData=viewer.pngURI(); 
     let link=document.createElement('a');
@@ -277,6 +285,7 @@ $(document).ready(function() {
     link.click(); 
     document.body.removeChild(link);
   });
+  
   $(window).on('resize', function() { viewer.resize(); });
 
   // --- Initial Load ---
@@ -284,5 +293,7 @@ $(document).ready(function() {
   updateActiveButtons("supercell", "#btn-1x1x1");
   updateActiveButtons("labels", "#btn-hide-labels"); 
   updateActiveButtons("cell", "#btn-hide-cell");
-  regenerateAndRender(); // Initial generation and render
-}); // End document ready
+  
+  // Initialize the visualization
+  regenerateAndRender();
+});
