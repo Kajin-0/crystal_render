@@ -240,7 +240,7 @@
           atomLabels = [];
         }
         if (cellShown) {
-          for (let line of cellLines) {
+          for (let naut of cellLines) {
             viewer.removeShape(line);
           }
           cellLines = [];
@@ -351,37 +351,40 @@
         }
         atomLabels = [];
         
+        // Only label atoms from the first unit cell (i=0, j=0, k=0 in generateZincblende)
         atoms.forEach(atom => {
-          // Calculate vector from center to atom
-          let dx = atom.x - center.x;
-          let dy = atom.y - center.y;
-          let dz = atom.z - center.z;
-          let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-          if (dist > 0) {
-            dx /= dist;
-            dy /= dist;
-            dz /= dist;
-          } else {
-            dx = 1;
-            dy = 0;
-            dz = 0;
+          if (atom.x < latticeConstant && atom.y < latticeConstant && atom.z < latticeConstant) {
+            // Calculate vector from center to atom
+            let dx = atom.x - center.x;
+            let dy = atom.y - center.y;
+            let dz = atom.z - center.z;
+            let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+            if (dist > 0) {
+              dx /= dist;
+              dy /= dist;
+              dz /= dist;
+            } else {
+              dx = 1;
+              dy = 0;
+              dz = 0;
+            }
+            const offset = 1.5;  // Offset distance
+            const labelPos = {
+              x: atom.x + dx * offset,
+              y: atom.y + dy * offset,
+              z: atom.z + dz * offset
+            };
+            
+            let labelId = viewer.addLabel(atom.elem, {
+              position: labelPos,
+              backgroundColor: "rgba(255, 255, 255, 0.7)",
+              fontColor: "#333333",
+              fontSize: 12,
+              showBackground: true,
+              backgroundOpacity: 0.5
+            });
+            atomLabels.push(labelId);
           }
-          const offset = 1.5;  // Offset distance
-          const labelPos = {
-            x: atom.x + dx * offset,
-            y: atom.y + dy * offset,
-            z: atom.z + dz * offset
-          };
-          
-          let labelId = viewer.addLabel(atom.elem, {
-            position: labelPos,
-            backgroundColor: "rgba(255, 255, 255, 0.7)",
-            fontColor: "#333333",
-            fontSize: 12,
-            showBackground: true,
-            backgroundOpacity: 0.5
-          });
-          atomLabels.push(labelId);
         });
       }
       
