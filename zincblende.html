@@ -149,14 +149,12 @@
       <div class="control-group">
         <div class="control-title">Unit Cell</div>
         <button id="btn-show-cell">Show Unit Cell</button>
-        <button id="btn-hide-cell">Hide Unit Cell</button>
-      </div>
+        <button id="btn-hide-cell" class="active">Hide Unit Cell</button> </div>
 
       <div class="control-group">
         <div class="control-title">Labels</div>
         <button id="btn-show-labels">Show Labels</button>
-        <button id="btn-hide-labels">Hide Labels</button>
-      </div>
+        <button id="btn-hide-labels" class="active">Hide Labels</button> </div>
 
       <div class="control-group">
         <div class="control-title">Supercell</div>
@@ -199,22 +197,15 @@
       let viewer = $3Dmol.createViewer(element, config);
 
       // Define lattice constants for HgTe and CdTe
-      let a_HgTe = 6.46; // Å
-      let a_CdTe = 6.48; // Å
-      let latticeConstant = a_HgTe; // Initial value
+      const a_HgTe = 6.46; // Å
+      const a_CdTe = 6.48; // Å
+      let latticeConstant = a_HgTe; // Initial value (will be updated)
 
-      // HgCdTe colors - Brighter scheme
+      // HgCdTe colors
       const atomColors = {
         "Hg": "#FF5252", // Bright red
         "Cd": "#FFD740", // Bright gold/yellow
         "Te": "#40C4FF"  // Bright blue
-      };
-      // Define radii (used for spacefill or potentially custom scaling)
-      // Note: setStyle's default radii are often sufficient.
-      const atomRadii = {
-        "Hg": 1.5,
-        "Cd": 1.4,
-        "Te": 1.4
       };
 
       // Track state
@@ -232,6 +223,7 @@
       // Function to generate atom data for HgCdTe
       function generateAtomData(cdRatio = 0.3, cellSize = 1) {
         let atoms = [];
+        // Calculate lattice constant based on current composition for atom placement
         const currentLatticeConstant = a_HgTe * (1 - cdRatio) + a_CdTe * cdRatio;
 
         // Generate supercell
@@ -254,7 +246,7 @@
                   x: (pos[0] + i) * currentLatticeConstant,
                   y: (pos[1] + j) * currentLatticeConstant,
                   z: (pos[2] + k) * currentLatticeConstant,
-                  serial: atoms.length // Unique ID for potential label association later
+                  serial: atoms.length // Unique ID if needed later
                 });
               });
 
@@ -274,27 +266,29 @@
         return atoms;
       }
 
-      // Function to add atom labels (modified to use data from currentAtoms)
+      // Function to add atom labels
       function addAtomLabels() {
-         // Clear previous atom labels
+        // Clear previous atom labels
         for (let label of atomLabels) {
            viewer.removeLabel(label);
         }
         atomLabels = [];
-        if (!labelsShown || !currentAtoms || currentAtoms.length === 0) return; // Exit if labels not shown or no atoms
+        // Exit if labels not shown or no atoms generated yet
+        if (!labelsShown || !currentAtoms || currentAtoms.length === 0) return;
 
-        const center = { // Use actual lattice constant for centering calculation if needed
+        // Calculate center based on overall supercell dimensions for label offset direction
+        const center = {
             x: (currentSupercell * latticeConstant) / 2,
             y: (currentSupercell * latticeConstant) / 2,
             z: (currentSupercell * latticeConstant) / 2
         };
 
         // Only label atoms from the first unit cell equivalent for clarity
-        const baseCellLimit = latticeConstant;
+        const baseCellLimit = latticeConstant; // Use the calculated lattice constant
         currentAtoms.forEach(atom => {
           // Check if atom is within the conceptual "first" unit cell boundaries
           if (atom.x < baseCellLimit && atom.y < baseCellLimit && atom.z < baseCellLimit) {
-                // Calculate offset direction (simple radial outward for this example)
+                // Calculate offset direction (simple radial outward)
                 let dx = atom.x - center.x;
                 let dy = atom.y - center.y;
                 let dz = atom.z - center.z;
@@ -302,14 +296,13 @@
                 const offsetFactor = 1.5; // How far label is from atom center
                 let labelPos = { x: atom.x, y: atom.y, z: atom.z };
 
-                if (dist > 0.01) { // Avoid division by zero if atom is at center
+                if (dist > 0.01) { // Avoid division by zero
                     labelPos.x += (dx / dist) * offsetFactor;
                     labelPos.y += (dy / dist) * offsetFactor;
                     labelPos.z += (dz / dist) * offsetFactor;
-                } else { // Default offset if atom is at center (e.g., 1x1x1 cell origin)
+                } else { // Default offset if atom is effectively at center
                    labelPos.x += offsetFactor;
                 }
-
 
                let labelId = viewer.addLabel(atom.elem, {
                    position: labelPos,
@@ -319,12 +312,12 @@
                    showBackground: true,
                    backgroundOpacity: 0.5
                 });
-               atomLabels.push(labelId);
+               atomLabels.push(labelId); // Store the label ID
             }
         });
       }
 
-      // Function to draw unit cell (remains similar, uses shapes)
+      // Function to draw unit cell outline
       function drawUnitCellOutline() {
         // Remove previous cell lines and label
         for (let lineId of cellLines) {
@@ -352,40 +345,41 @@
           [0, 4], [1, 5], [2, 6], [3, 7]
         ];
 
-        // Draw cell edges as dashed lines
+        // Draw cell edges
         edges.forEach(edge => {
             const start = { x: vertices[edge[0]][0], y: vertices[edge[0]][1], z: vertices[edge[0]][2] };
             const end = { x: vertices[edge[1]][0], y: vertices[edge[1]][1], z: vertices[edge[1]][2] };
 
-            // Simple solid line for simplicity, dashed requires more geometry
-             let lineId = viewer.addCylinder({
+             let lineId = viewer.addCylinder({ // Use cylinder for lines
                  start: start,
                  end: end,
-                 radius: 0.05,
-                 color: "#888888", // Grey color for cell outline
-                 dashed: true, // Use 3Dmol's dashed line feature if available and desired
+                 radius: 0.05, // Thin radius for outline
+                 color: "#555555", // Dark grey color
+                 dashed: true, // Make it dashed
                  dashLength: 0.4,
                  gapLength: 0.2
             });
              cellLines.push(lineId); // Store the ID to remove later
          });
 
-        // Add lattice constant label near the cell
-        cellLabel = viewer.addLabel(`a = ${latticeConstant.toFixed(2)} Å`, {
-          position: { x: cellLength / 2, y: -1.0, z: -1.0 }, // Adjusted position
-          backgroundColor: "rgba(255, 255, 255, 0.8)",
-          fontColor: "#333333",
-          fontSize: 14,
-          showBackground: true,
-          backgroundOpacity: 0.8
-        });
+        // Add lattice constant label near the cell (only for 1x1x1 for clarity)
+        if (currentSupercell === 1) {
+            cellLabel = viewer.addLabel(`a = ${latticeConstant.toFixed(2)} Å`, {
+              position: { x: cellLength / 2, y: -1.0, z: -1.0 }, // Adjusted position
+              backgroundColor: "rgba(255, 255, 255, 0.8)",
+              fontColor: "#333333",
+              fontSize: 14,
+              showBackground: true,
+              backgroundOpacity: 0.8
+            });
+        }
       }
 
       // *** CENTRAL RENDER FUNCTION ***
       function renderStructure() {
         // 1. Clear previous models, shapes, and labels
         viewer.removeAllModels();
-        viewer.removeAllShapes(); // Clear any manually added shapes (like old bonds/spheres if previous method was used)
+        viewer.removeAllShapes(); // Clear any manually added shapes
         for (let label of atomLabels) viewer.removeLabel(label);
         atomLabels = [];
         for (let lineId of cellLines) viewer.removeShape(lineId);
@@ -393,14 +387,14 @@
         if (cellLabel) viewer.removeLabel(cellLabel);
         cellLabel = null;
 
-        // 2. Update composition and lattice constant display
+        // 2. Update composition and calculate current lattice constant
         let cdRatio = parseFloat($("#composition").val());
-        latticeConstant = a_HgTe * (1 - cdRatio) + a_CdTe * cdRatio;
+        latticeConstant = a_HgTe * (1 - cdRatio) + a_CdTe * cdRatio; // Update global latticeConstant for use elsewhere
         $("#composition-value").text(`x = ${cdRatio.toFixed(1)}`);
         $("#composition-info").html(`Composition: Hg<sub>${(1-cdRatio).toFixed(1)}</sub>Cd<sub>${cdRatio.toFixed(1)}</sub>Te`);
         $("#lattice-info").text(`Lattice constant: ${latticeConstant.toFixed(2)} Å`);
 
-        // 3. Generate new atom data
+        // 3. Generate new atom data using the latest composition ratio
         currentAtoms = generateAtomData(cdRatio, currentSupercell);
         if (currentAtoms.length === 0) {
             viewer.render(); // Render empty viewer if no atoms
@@ -414,31 +408,51 @@
         // 5. Apply visualization style
         let style = {};
         const baseStickRadius = 0.1;
-        const ballScale = 0.35; // Proportion of vdW radius for ball&stick spheres
+        const ballScale = 0.35;
 
-        switch (currentViewStyle) {
-          case "stick":
-            style = { stick: { radius: baseStickRadius } };
-            break;
-          case "ballAndStick":
-            style = {
-              stick: { radius: baseStickRadius },
-              sphere: { scale: ballScale } // Use scale relative to vdW radius
-            };
-            break;
-          case "spacefill":
-            style = { sphere: {} }; // Default radius is vdW
-            break;
-        }
-
-        // Define the custom color scheme mapping element symbols to colors
-        let colorScheme = {
+        // Define the common color scheme structure ONCE
+        const colorScheme = {
             prop: 'elem',
             map: atomColors
         };
-        // Apply the style and colorscheme
-        viewer.setStyle({}, { ...style, colorscheme: colorScheme });
 
+        // --- Corrected Style Application ---
+        switch (currentViewStyle) {
+          case "stick":
+            style = {
+              stick: {
+                radius: baseStickRadius,
+                colorscheme: colorScheme // Apply colorscheme TO STICKS
+              }
+              // Optional: hide spheres explicitly if needed, though usually stick implies atoms at vertices
+              // sphere: {hidden: true}
+            };
+            break;
+          case "ballAndStick":
+            style = {
+              stick: {
+                radius: baseStickRadius,
+                colorscheme: colorScheme // Apply colorscheme TO STICKS
+              },
+              sphere: {
+                scale: ballScale,
+                colorscheme: colorScheme // Apply colorscheme TO SPHERES
+              }
+            };
+            break;
+          case "spacefill":
+            style = {
+              sphere: {
+                // Use default vdW radius
+                colorscheme: colorScheme // Apply colorscheme TO SPHERES
+              }
+            };
+            break;
+        }
+
+        // Apply the constructed style object
+        viewer.setStyle({}, style);
+        // --- End Corrected Style Application ---
 
         // 6. Add Unit Cell if shown
         if (cellShown) {
@@ -447,7 +461,7 @@
 
         // 7. Add Labels if shown
         if (labelsShown) {
-           addAtomLabels(); // Uses currentAtoms internally now
+           addAtomLabels();
         }
 
         // 8. Zoom and render the scene
@@ -457,22 +471,32 @@
 
       // Function to update active button styling
       function updateActiveButtons(group, activeButton) {
-        if (group === "visualization") {
-          $("#btn-stick, #btn-ball-stick, #btn-spacefill").removeClass("active");
-        } else if (group === "supercell") {
-          $("#btn-1x1x1, #btn-2x2x2").removeClass("active");
-        } else if (group === "labels") {
-            $("#btn-show-labels, #btn-hide-labels").removeClass("active");
-        } else if (group === "cell") {
-            $("#btn-show-cell, #btn-hide-cell").removeClass("active");
+        let buttons;
+        switch (group) {
+            case "visualization":
+                buttons = "#btn-stick, #btn-ball-stick, #btn-spacefill";
+                break;
+            case "supercell":
+                buttons = "#btn-1x1x1, #btn-2x2x2";
+                break;
+            case "labels":
+                buttons = "#btn-show-labels, #btn-hide-labels";
+                break;
+            case "cell":
+                buttons = "#btn-show-cell, #btn-hide-cell";
+                break;
+            default:
+                return; // Unknown group
         }
+        $(buttons).removeClass("active");
         $(activeButton).addClass("active");
       }
 
       // Initial render
       renderStructure();
-      updateActiveButtons("cell", "#btn-hide-cell"); // Default state
-      updateActiveButtons("labels", "#btn-hide-labels"); // Default state
+      // Set initial active state for hide buttons
+      updateActiveButtons("labels", "#btn-hide-labels");
+      updateActiveButtons("cell", "#btn-hide-cell");
 
 
       // --- Event listeners ---
@@ -504,7 +528,6 @@
          }
       });
 
-      // --- Corrected Label/Cell Handlers ---
       $("#btn-show-labels").click(function() {
         if (!labelsShown) {
             labelsShown = true;
@@ -536,8 +559,6 @@
             renderStructure(); // Redraw needed to remove cell outline
         }
       });
-      // --- End Corrected Handlers ---
-
 
       $("#btn-1x1x1").click(function() {
         if (currentSupercell !== 1) {
