@@ -2,46 +2,501 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Zincblende Structure Viewer</title>
+  <title>HgCdTe Zincblende Structure Viewer</title>
   <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
   <style>
-    body { margin: 0; }
-    #viewer { width: 100vw; height: 100vh; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+    #container {
+      display: flex;
+      height: 100vh;
+    }
+    #viewer {
+      flex: 1;
+      position: relative;
+    }
+    #controls {
+      width: 250px;
+      padding: 15px;
+      background-color: #f5f5f5;
+      border-left: 1px solid #ddd;
+      overflow-y: auto;
+    }
+    .control-group {
+      margin-bottom: 15px;
+    }
+    .control-title {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    button {
+      padding: 5px 10px;
+      margin: 3px;
+      cursor: pointer;
+    }
+    .slider {
+      width: 100%;
+    }
+    .info-panel {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background-color: rgba(255, 255, 255, 0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      max-width: 300px;
+    }
+    .legend {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    .legend-color {
+      width: 15px;
+      height: 15px;
+      margin-right: 5px;
+      border-radius: 50%;
+    }
   </style>
 </head>
 <body>
-  <div id="viewer"></div>
+  <div id="container">
+    <div id="viewer">
+      <div class="info-panel">
+        <h3>HgCdTe Zincblende Structure</h3>
+        <div id="lattice-info">Lattice constant: 6.46 Å</div>
+        <div id="composition-info">Composition: Hg<sub>0.7</sub>Cd<sub>0.3</sub>Te</div>
+        <div>Space group: F-43m (216)</div>
+        <hr>
+        <div class="legend">
+          <div class="legend-color" style="background-color:#AE0000;"></div>
+          <div>Hg</div>
+        </div>
+        <div class="legend">
+          <div class="legend-color" style="background-color:#FFD700;"></div>
+          <div>Cd</div>
+        </div>
+        <div class="legend">
+          <div class="legend-color" style="background-color:#4F94CD;"></div>
+          <div>Te</div>
+        </div>
+      </div>
+    </div>
+    <div id="controls">
+      <h2>Controls</h2>
+      
+      <div class="control-group">
+        <div class="control-title">Composition (x in Hg₁₋ₓCdₓTe)</div>
+        <input type="range" id="composition" class="slider" min="0" max="1" step="0.1" value="0.3">
+        <div id="composition-value">x = 0.3</div>
+      </div>
+      
+      <div class="control-group">
+        <div class="control-title">Visualization</div>
+        <button id="btn-stick">Stick</button>
+        <button id="btn-ball-stick">Ball & Stick</button>
+        <button id="btn-spacefill">Spacefill</button>
+      </div>
+      
+      <div class="control-group">
+        <div class="control-title">Unit Cell</div>
+        <button id="btn-show-cell">Show Unit Cell</button>
+        <button id="btn-hide-cell">Hide Unit Cell</button>
+      </div>
+      
+      <div class="control-group">
+        <div class="control-title">Labels</div>
+        <button id="btn-show-labels">Show Labels</button>
+        <button id="btn-hide-labels">Hide Labels</button>
+      </div>
+      
+      <div class="control-group">
+        <div class="control-title">Supercell</div>
+        <button id="btn-1x1x1">1×1×1</button>
+        <button id="btn-2x2x2">2×2×2</button>
+      </div>
+      
+      <div class="control-group">
+        <div class="control-title">Animation</div>
+        <button id="btn-spin">Spin</button>
+        <button id="btn-stop">Stop</button>
+      </div>
+      
+      <div class="control-group">
+        <div class="control-title">Export</div>
+        <button id="btn-screenshot">Screenshot</button>
+      </div>
+      
+      <div class="control-group">
+        <div class="control-title">Structure Information</div>
+        <p><strong>HgCdTe (Hg₁₋ₓCdₓTe)</strong></p>
+        <p>- Ternary semiconductor alloy</p>
+        <p>- Zincblende structure (F-43m)</p>
+        <p>- Used in infrared detectors</p>
+        <p>- Bandgap tunable by composition</p>
+      </div>
+    </div>
+  </div>
+
   <script>
+    // Initialize the viewer
     let element = document.getElementById("viewer");
-    let viewer = $3Dmol.createViewer(element, { backgroundColor: "white" });
-
-    // Define a basic zincblende (e.g., GaAs) with 8 atoms
-    const unitCell = [
-      { elem: "Ga", x: 0, y: 0, z: 0 },
-      { elem: "Ga", x: 0.5, y: 0.5, z: 0 },
-      { elem: "Ga", x: 0.5, y: 0, z: 0.5 },
-      { elem: "Ga", x: 0, y: 0.5, z: 0.5 },
-      { elem: "As", x: 0.25, y: 0.25, z: 0.25 },
-      { elem: "As", x: 0.75, y: 0.75, z: 0.25 },
-      { elem: "As", x: 0.75, y: 0.25, z: 0.75 },
-      { elem: "As", x: 0.25, y: 0.75, z: 0.75 },
-    ];
-
-    // Render atoms
-    unitCell.forEach(atom => {
-      viewer.addSphere({
-        center: { x: atom.x * 20, y: atom.y * 20, z: atom.z * 20 },
-        radius: 1.2,
-        color: atom.elem === "Ga" ? "blue" : "orange",
-        opacity: 1.0
-      });
+    let viewer = $3Dmol.createViewer(element, {
+      backgroundColor: "white",
+      antialias: true
     });
-
-    // Optional: Add bonds visually (not chemically accurate)
-    viewer.addLine({ start: {x: 5, y:5, z:5}, end: {x:10, y:10, z:10}, color: "gray" });
-
-    viewer.zoomTo();
-    viewer.render();
+    
+    // Define lattice constant (in Angstroms)
+    // HgTe: 6.46 Å, CdTe: 6.48 Å
+    let latticeConstant = 6.46;
+    
+    // HgCdTe colors
+    const atomColors = {
+      "Hg": "#AE0000",  // Deep red
+      "Cd": "#FFD700",  // Gold
+      "Te": "#4F94CD"   // Steel blue
+    };
+    
+    // Define radii
+    const atomRadii = {
+      "Hg": 1.5,
+      "Cd": 1.4,
+      "Te": 1.4
+    };
+    
+    // Track if labels are shown
+    let labelsShown = false;
+    let cellShown = false;
+    let currentLabels = [];
+    let cellLines = [];
+    
+    // Function to generate a zincblende structure for HgCdTe
+    function generateZincblende(cdRatio = 0.3, cellSize = 1) {
+      // Clear previous structure
+      viewer.removeAllModels();
+      viewer.removeAllShapes();
+      if (labelsShown) {
+        for (let label of currentLabels) {
+          viewer.removeLabel(label);
+        }
+        currentLabels = [];
+      }
+      
+      // Initialize atoms array
+      let atoms = [];
+      
+      // Generate supercell
+      for (let i = 0; i < cellSize; i++) {
+        for (let j = 0; j < cellSize; j++) {
+          for (let k = 0; k < cellSize; k++) {
+            // Base positions for zincblende structure (fractional coordinates)
+            // Cation positions (Hg/Cd)
+            let cationPositions = [
+              [0, 0, 0],
+              [0, 0.5, 0.5],
+              [0.5, 0, 0.5],
+              [0.5, 0.5, 0]
+            ];
+            
+            // Anion positions (Te)
+            let anionPositions = [
+              [0.25, 0.25, 0.25],
+              [0.25, 0.75, 0.75],
+              [0.75, 0.25, 0.75],
+              [0.75, 0.75, 0.25]
+            ];
+            
+            // Add cations (Hg and Cd based on composition)
+            for (let pos of cationPositions) {
+              // Determine if this atom is Hg or Cd based on the ratio
+              let elemType = Math.random() < cdRatio ? "Cd" : "Hg";
+              
+              atoms.push({
+                elem: elemType,
+                x: (pos[0] + i) * latticeConstant,
+                y: (pos[1] + j) * latticeConstant,
+                z: (pos[2] + k) * latticeConstant
+              });
+            }
+            
+            // Add anions (Te)
+            for (let pos of anionPositions) {
+              atoms.push({
+                elem: "Te",
+                x: (pos[0] + i) * latticeConstant,
+                y: (pos[1] + j) * latticeConstant,
+                z: (pos[2] + k) * latticeConstant
+              });
+            }
+          }
+        }
+      }
+      
+      return atoms;
+    }
+    
+    // Function to render the structure
+    function renderStructure(viewStyle = "ballAndStick") {
+      // Get the composition value
+      let cdRatio = parseFloat(document.getElementById("composition").value);
+      document.getElementById("composition-value").textContent = `x = ${cdRatio.toFixed(1)}`;
+      document.getElementById("composition-info").innerHTML = `Composition: Hg<sub>${(1-cdRatio).toFixed(1)}</sub>Cd<sub>${cdRatio.toFixed(1)}</sub>Te`;
+      
+      // Generate atoms
+      let atoms = generateZincblende(cdRatio, currentSupercell);
+      
+      // Render different visualization styles
+      switch(viewStyle) {
+        case "stick":
+          // Render atoms as small spheres
+          atoms.forEach(atom => {
+            viewer.addSphere({
+              center: { x: atom.x, y: atom.y, z: atom.z },
+              radius: 0.4,
+              color: atomColors[atom.elem],
+              opacity: 1.0
+            });
+          });
+          // Add bonds
+          addBonds(atoms);
+          break;
+          
+        case "ballAndStick":
+          // Render atoms as spheres
+          atoms.forEach(atom => {
+            viewer.addSphere({
+              center: { x: atom.x, y: atom.y, z: atom.z },
+              radius: atomRadii[atom.elem] * 0.6,
+              color: atomColors[atom.elem],
+              opacity: 1.0
+            });
+          });
+          // Add bonds
+          addBonds(atoms);
+          break;
+          
+        case "spacefill":
+          // Render atoms as large spheres
+          atoms.forEach(atom => {
+            viewer.addSphere({
+              center: { x: atom.x, y: atom.y, z: atom.z },
+              radius: atomRadii[atom.elem],
+              color: atomColors[atom.elem],
+              opacity: 1.0
+            });
+          });
+          break;
+      }
+      
+      // Add labels if they are enabled
+      if (labelsShown) {
+        addLabels(atoms);
+      }
+      
+      // Add unit cell if it is enabled
+      if (cellShown) {
+        drawUnitCell(currentSupercell);
+      }
+      
+      // Update view
+      viewer.zoomTo();
+      viewer.render();
+    }
+    
+    // Function to add bonds between atoms
+    function addBonds(atoms) {
+      const bondCutoff = 3.0; // Maximum distance for bonding (Angstroms)
+      
+      // Create bonds between close atoms
+      for (let i = 0; i < atoms.length; i++) {
+        for (let j = i + 1; j < atoms.length; j++) {
+          const atom1 = atoms[i];
+          const atom2 = atoms[j];
+          
+          // Skip bonds between same element types (cation-cation or anion-anion)
+          if ((atom1.elem === "Hg" || atom1.elem === "Cd") && 
+              (atom2.elem === "Hg" || atom2.elem === "Cd")) {
+            continue;
+          }
+          if (atom1.elem === "Te" && atom2.elem === "Te") {
+            continue;
+          }
+          
+          // Calculate distance
+          const dx = atom1.x - atom2.x;
+          const dy = atom1.y - atom2.y;
+          const dz = atom1.z - atom2.z;
+          const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
+          
+          // Add bond if within cutoff
+          if (distance < bondCutoff) {
+            viewer.addCylinder({
+              start: { x: atom1.x, y: atom1.y, z: atom1.z },
+              end: { x: atom2.x, y: atom2.y, z: atom2.z },
+              radius: 0.2,
+              color: "#888888",
+              fromCap: true,
+              toCap: true
+            });
+          }
+        }
+      }
+    }
+    
+    // Function to add atom labels
+    function addLabels(atoms) {
+      atoms.forEach(atom => {
+        let labelId = viewer.addLabel(atom.elem, {
+          position: { x: atom.x, y: atom.y, z: atom.z },
+          backgroundColor: "rgba(255, 255, 255, 0.5)",
+          fontColor: "black",
+          fontSize: 12,
+          showBackground: true,
+          backgroundOpacity: 0.5
+        });
+        currentLabels.push(labelId);
+      });
+    }
+    
+    // Function to draw unit cell
+    function drawUnitCell(cellSize) {
+      const cellLength = latticeConstant * cellSize;
+      
+      // Remove previous cell
+      for (let line of cellLines) {
+        viewer.removeShape(line);
+      }
+      cellLines = [];
+      
+      // Define cell vertices
+      const vertices = [
+        [0, 0, 0], [cellLength, 0, 0], [0, cellLength, 0], [cellLength, cellLength, 0],
+        [0, 0, cellLength], [cellLength, 0, cellLength], [0, cellLength, cellLength], [cellLength, cellLength, cellLength]
+      ];
+      
+      // Define edges
+      const edges = [
+        [0, 1], [0, 2], [1, 3], [2, 3],
+        [4, 5], [4, 6], [5, 7], [6, 7],
+        [0, 4], [1, 5], [2, 6], [3, 7]
+      ];
+      
+      // Draw cell edges
+      edges.forEach(edge => {
+        const start = vertices[edge[0]];
+        const end = vertices[edge[1]];
+        
+        let lineId = viewer.addCylinder({
+          start: { x: start[0], y: start[1], z: start[2] },
+          end: { x: end[0], y: end[1], z: end[2] },
+          radius: 0.1,
+          color: "#000000",
+          fromCap: true,
+          toCap: true
+        });
+        cellLines.push(lineId);
+      });
+      
+      // Add lattice constant labels
+      let labelId = viewer.addLabel(`a = ${latticeConstant.toFixed(2)} Å`, {
+        position: { x: cellLength / 2, y: -1, z: -1 },
+        backgroundColor: "rgba(255, 255, 255, 0.8)",
+        fontColor: "black",
+        fontSize: 14,
+        showBackground: true,
+        backgroundOpacity: 0.8
+      });
+      currentLabels.push(labelId);
+    }
+    
+    // Current state tracking
+    let currentViewStyle = "ballAndStick";
+    let currentSupercell = 1;
+    
+    // Initial render
+    renderStructure(currentViewStyle);
+    
+    // Event listeners for controls
+    document.getElementById("composition").addEventListener("input", function() {
+      renderStructure(currentViewStyle);
+    });
+    
+    document.getElementById("btn-stick").addEventListener("click", function() {
+      currentViewStyle = "stick";
+      renderStructure(currentViewStyle);
+    });
+    
+    document.getElementById("btn-ball-stick").addEventListener("click", function() {
+      currentViewStyle = "ballAndStick";
+      renderStructure(currentViewStyle);
+    });
+    
+    document.getElementById("btn-spacefill").addEventListener("click", function() {
+      currentViewStyle = "spacefill";
+      renderStructure(currentViewStyle);
+    });
+    
+    document.getElementById("btn-show-labels").addEventListener("click", function() {
+      labelsShown = true;
+      let atoms = generateZincblende(parseFloat(document.getElementById("composition").value), currentSupercell);
+      addLabels(atoms);
+      viewer.render();
+    });
+    
+    document.getElementById("btn-hide-labels").addEventListener("click", function() {
+      labelsShown = false;
+      for (let label of currentLabels) {
+        viewer.removeLabel(label);
+      }
+      currentLabels = [];
+      viewer.render();
+    });
+    
+    document.getElementById("btn-show-cell").addEventListener("click", function() {
+      cellShown = true;
+      drawUnitCell(currentSupercell);
+      viewer.render();
+    });
+    
+    document.getElementById("btn-hide-cell").addEventListener("click", function() {
+      cellShown = false;
+      for (let line of cellLines) {
+        viewer.removeShape(line);
+      }
+      cellLines = [];
+      viewer.render();
+    });
+    
+    document.getElementById("btn-1x1x1").addEventListener("click", function() {
+      currentSupercell = 1;
+      renderStructure(currentViewStyle);
+    });
+    
+    document.getElementById("btn-2x2x2").addEventListener("click", function() {
+      currentSupercell = 2;
+      renderStructure(currentViewStyle);
+    });
+    
+    document.getElementById("btn-spin").addEventListener("click", function() {
+      viewer.spin(true);
+    });
+    
+    document.getElementById("btn-stop").addEventListener("click", function() {
+      viewer.spin(false);
+    });
+    
+    document.getElementById("btn-screenshot").addEventListener("click", function() {
+      let imageData = viewer.pngURI();
+      let link = document.createElement('a');
+      link.download = 'HgCdTe-zincblende.png';
+      link.href = imageData;
+      link.click();
+    });
   </script>
 </body>
 </html>
