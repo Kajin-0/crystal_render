@@ -221,22 +221,88 @@
       function generateAtomData(cdRatio = 0.3, cellSize = 1) {
         let atoms = [];
         const currentLatticeConstant = a_HgTe * (1 - cdRatio) + a_CdTe * cdRatio;
+        // Create bonds array
+        let bonds = [];
+        
         for (let i = 0; i < cellSize; i++) {
           for (let j = 0; j < cellSize; j++) {
             for (let k = 0; k < cellSize; k++) {
               let cationPositions = [[0,0,0], [0,0.5,0.5], [0.5,0,0.5], [0.5,0.5,0]];
               let anionPositions = [[0.25,0.25,0.25], [0.25,0.75,0.75], [0.75,0.25,0.75], [0.75,0.75,0.25]];
+              
+              // Add cations (Hg or Cd)
+              let cationIndices = [];
               cationPositions.forEach(pos => {
                 let elemType = Math.random() < cdRatio ? "Cd" : "Hg";
-                atoms.push({ elem: elemType, x: (pos[0]+i)*currentLatticeConstant, y: (pos[1]+j)*currentLatticeConstant, z: (pos[2]+k)*currentLatticeConstant });
+                let atom = { 
+                  elem: elemType, 
+                  x: (pos[0]+i)*currentLatticeConstant, 
+                  y: (pos[1]+j)*currentLatticeConstant, 
+                  z: (pos[2]+k)*currentLatticeConstant,
+                  serial: atoms.length
+                };
+                atoms.push(atom);
+                cationIndices.push(atom.serial);
               });
+              
+              // Add anions (Te)
+              let anionIndices = [];
               anionPositions.forEach(pos => {
-                atoms.push({ elem: "Te", x: (pos[0]+i)*currentLatticeConstant, y: (pos[1]+j)*currentLatticeConstant, z: (pos[2]+k)*currentLatticeConstant });
+                let atom = { 
+                  elem: "Te", 
+                  x: (pos[0]+i)*currentLatticeConstant, 
+                  y: (pos[1]+j)*currentLatticeConstant, 
+                  z: (pos[2]+k)*currentLatticeConstant,
+                  serial: atoms.length
+                };
+                atoms.push(atom);
+                anionIndices.push(atom.serial);
+              });
+              
+              // Connect each cation to its nearest anions
+              cationIndices.forEach(cationIdx => {
+                anionIndices.forEach(anionIdx => {
+                  let cation = atoms[cationIdx];
+                  let anion = atoms[anionIdx];
+                  
+                  // Calculate distance
+                  let dx = cation.x - anion.x;
+                  let dy = cation.y - anion.y;
+                  let dz = cation.z - anion.z;
+                  let distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                  
+                  // If distance is appropriate for a bond in zincblende structure
+                  // For zincblende structures, the bond distance is approximately a√3/4
+                  // where a is the lattice constant
+                  let bondDistanceThreshold = currentLatticeConstant * Math.sqrt(3) / 4 * 1.1; // Add 10% tolerance
+                  
+                  if (distance <= bondDistanceThreshold) {
+                    bonds.push({
+                      atom1: cationIdx,
+                      atom2: anionIdx,
+                      order: 1
+                    });
+                  }
+                });
               });
             }
           }
         }
-        atoms.forEach((atom, index) => atom.serial = index); // Add serial ID
+        
+        // Add bonds to atoms
+        for (let i = 0; i < atoms.length; i++) {
+          atoms[i].bonds = [];
+          atoms[i].bondOrder = [];
+        }
+        
+        bonds.forEach(bond => {
+          atoms[bond.atom1].bonds.push(bond.atom2);
+          atoms[bond.atom1].bondOrder.push(bond.order);
+          
+          atoms[bond.atom2].bonds.push(bond.atom1);
+          atoms[bond.atom2].bondOrder.push(bond.order);
+        });
+        
         return atoms;
       }
 
@@ -295,7 +361,11 @@
         $("#composition-info").html(`Composition: Hg<sub>${(1-cdRatio).toFixed(1)}</sub>Cd<sub>${cdRatio.toFixed(1)}</sub>Te`);
         $("#lattice-info").text(`Lattice constant: ${latticeConstant.toFixed(2)} Å`);
 
-        let model = viewer.addModel(); model.addAtoms(currentAtoms);
+        let model = viewer.addModel(); 
+        model.addAtoms(currentAtoms);
+        
+        // Important: Set the bond info explicitly
+        model.setDefaultBonds();
 
         let style = {};
         const baseStickRadius = 0.1; const ballScale = 0.35; const stickModeAtomScale = 0.05;
@@ -307,7 +377,6 @@
               stick: {
                 radius: baseStickRadius,
                 colorscheme: colorScheme
-                // Removed bonds: 0 - Rely on default
               },
               sphere: {
                 scale: stickModeAtomScale, // Keep tiny spheres
@@ -319,7 +388,6 @@
               stick: {
                 radius: baseStickRadius,
                 colorscheme: colorScheme
-                 // Removed bonds: 0 - Rely on default
               },
               sphere: {
                 scale: ballScale,
