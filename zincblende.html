@@ -198,9 +198,10 @@
       
       let viewer = $3Dmol.createViewer(element, config);
       
-      // Define lattice constant (in Angstroms)
-      // HgTe: 6.46 Å, CdTe: 6.48 Å
-      let latticeConstant = 6.46;
+      // Define lattice constants for HgTe and CdTe
+      let a_HgTe = 6.46;  // Å
+      let a_CdTe = 6.48;  // Å
+      let latticeConstant = a_HgTe;  // Initial value
       
       // HgCdTe colors - Brighter scheme
       const atomColors = {
@@ -216,10 +217,11 @@
         "Te": 1.4
       };
       
-      // Track if labels are shown
+      // Track if labels and cell are shown
       let labelsShown = false;
       let cellShown = false;
-      let currentLabels = [];
+      let atomLabels = [];
+      let cellLabel = null;
       let cellLines = [];
       
       // Current state tracking
@@ -232,10 +234,20 @@
         viewer.removeAllModels();
         viewer.removeAllShapes();
         if (labelsShown) {
-          for (let label of currentLabels) {
+          for (let label of atomLabels) {
             viewer.removeLabel(label);
           }
-          currentLabels = [];
+          atomLabels = [];
+        }
+        if (cellShown) {
+          for (let line of cellLines) {
+            viewer.removeShape(line);
+          }
+          cellLines = [];
+          if (cellLabel) {
+            viewer.removeLabel(cellLabel);
+            cellLabel = null;
+          }
         }
         
         // Initialize atoms array
@@ -321,8 +333,8 @@
               viewer.addCylinder({
                 start: { x: atom1.x, y: atom1.y, z: atom1.z },
                 end: { x: atom2.x, y: atom2.y, z: atom2.z },
-                radius: 0.15,  // Thinner bonds for a sleeker look
-                color: "#AAAAAA",  // Lighter color for bonds
+                radius: 0.1,  // Thinner bonds
+                color: "#AAAAAA",
                 fromCap: true,
                 toCap: true
               });
@@ -331,15 +343,34 @@
         }
       }
       
-      // Function to add atom labels (offset from atoms)
-      function addLabels(atoms) {
+      // Function to add atom labels with improved positioning
+      function addLabels(atoms, center) {
+        // Clear previous atom labels
+        for (let label of atomLabels) {
+          viewer.removeLabel(label);
+        }
+        atomLabels = [];
+        
         atoms.forEach(atom => {
-          // Calculate offset position for label (0.8 Å away from atom center)
-          const offset = 1.8;
+          // Calculate vector from center to atom
+          let dx = atom.x - center.x;
+          let dy = atom.y - center.y;
+          let dz = atom.z - center.z;
+          let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+          if (dist > 0) {
+            dx /= dist;
+            dy /= dist;
+            dz /= dist;
+          } else {
+            dx = 1;
+            dy = 0;
+            dz = 0;
+          }
+          const offset = 1.5;  // Offset distance
           const labelPos = {
-            x: atom.x + offset,
-            y: atom.y,
-            z: atom.z
+            x: atom.x + dx * offset,
+            y: atom.y + dy * offset,
+            z: atom.z + dz * offset
           };
           
           let labelId = viewer.addLabel(atom.elem, {
@@ -350,7 +381,7 @@
             showBackground: true,
             backgroundOpacity: 0.5
           });
-          currentLabels.push(labelId);
+          atomLabels.push(labelId);
         });
       }
       
@@ -358,11 +389,15 @@
       function drawUnitCell(cellSize) {
         const cellLength = latticeConstant * cellSize;
         
-        // Remove previous cell
+        // Remove previous cell lines and label
         for (let line of cellLines) {
           viewer.removeShape(line);
         }
         cellLines = [];
+        if (cellLabel) {
+          viewer.removeLabel(cellLabel);
+          cellLabel = null;
+        }
         
         // Define cell vertices
         const vertices = [
@@ -412,8 +447,8 @@
             let lineId = viewer.addCylinder({
               start: dashStart,
               end: dashEnd,
-              radius: 0.05,  // Thinner lines for unit cell
-              color: "#888888",  // Lighter color for cell lines
+              radius: 0.05,
+              color: "#888888",
               fromCap: true,
               toCap: true
             });
@@ -421,7 +456,7 @@
           }
         });
         
-        // Add lattice constant labels
+        // Add lattice constant label
         let labelId = viewer.addLabel(`a = ${latticeConstant.toFixed(2)} Å`, {
           position: { x: cellLength / 2, y: -1.5, z: -1.5 },
           backgroundColor: "rgba(255, 255, 255, 0.8)",
@@ -430,7 +465,7 @@
           showBackground: true,
           backgroundOpacity: 0.8
         });
-        currentLabels.push(labelId);
+        cellLabel = labelId;
       }
       
       // Function to render the structure
@@ -440,8 +475,19 @@
         $("#composition-value").text(`x = ${cdRatio.toFixed(1)}`);
         $("#composition-info").html(`Composition: Hg<sub>${(1-cdRatio).toFixed(1)}</sub>Cd<sub>${cdRatio.toFixed(1)}</sub>Te`);
         
+        // Calculate lattice constant based on composition
+        latticeConstant = a_HgTe * (1 - cdRatio) + a_CdTe * cdRatio;
+        $("#lattice-info").text(`Lattice constant: ${latticeConstant.toFixed(2)} Å`);
+        
         // Generate atoms
         let atoms = generateZincblende(cdRatio, currentSupercell);
+        
+        // Calculate center for label positioning
+        let center = {
+          x: (currentSupercell * latticeConstant) / 2,
+          y: (currentSupercell * latticeConstant) / 2,
+          z: (currentSupercell * latticeConstant) / 2
+        };
         
         // Render different visualization styles
         switch(viewStyle) {
@@ -488,7 +534,7 @@
         
         // Add labels if they are enabled
         if (labelsShown) {
-          addLabels(atoms);
+          addLabels(atoms, center);
         }
         
         // Add unit cell if it is enabled
@@ -503,7 +549,6 @@
       
       // Function to update active button styling
       function updateActiveButtons(group, activeButton) {
-        // Remove active class from all buttons in the group
         if (group === "visualization") {
           $("#btn-stick").removeClass("active");
           $("#btn-ball-stick").removeClass("active");
@@ -512,8 +557,6 @@
           $("#btn-1x1x1").removeClass("active");
           $("#btn-2x2x2").removeClass("active");
         }
-        
-        // Add active class to the clicked button
         $(activeButton).addClass("active");
       }
       
@@ -545,17 +588,23 @@
       
       $("#btn-show-labels").click(function() {
         labelsShown = true;
-        let atoms = generateZincblende(parseFloat($("#composition").val()), currentSupercell);
-        addLabels(atoms);
+        let cdRatio = parseFloat($("#composition").val());
+        let atoms = generateZincblende(cdRatio, currentSupercell);
+        let center = {
+          x: (currentSupercell * latticeConstant) / 2,
+          y: (currentSupercell * latticeConstant) / 2,
+          z: (currentSupercell * latticeConstant) / 2
+        };
+        addLabels(atoms, center);
         viewer.render();
       });
       
       $("#btn-hide-labels").click(function() {
         labelsShown = false;
-        for (let label of currentLabels) {
+        for (let label of atomLabels) {
           viewer.removeLabel(label);
         }
-        currentLabels = [];
+        atomLabels = [];
         viewer.render();
       });
       
@@ -571,6 +620,10 @@
           viewer.removeShape(line);
         }
         cellLines = [];
+        if (cellLabel) {
+          viewer.removeLabel(cellLabel);
+          cellLabel = null;
+        }
         viewer.render();
       });
       
