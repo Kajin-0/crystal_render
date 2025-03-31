@@ -78,71 +78,61 @@
                     "Te": 1.37
                 };
                 
-                // Zinc-blende structure has a face-centered cubic lattice
-                // with two atom types (here Hg/Cd and Te)
+                // Create a 2x2x2 supercell for better visibility
+                const supercellSize = 2;
                 
-                // Define the unit cell
-                const a = latticeConstant;
-                
-                // Position of atoms within a single unit cell
-                // Hg/Cd positions - FCC lattice sites
-                const metalPositions = [
-                    [0, 0, 0],
-                    [0, 0.5*a, 0.5*a],
-                    [0.5*a, 0, 0.5*a],
-                    [0.5*a, 0.5*a, 0]
-                ];
-                
-                // Te positions - shifted by (0.25, 0.25, 0.25) from metal positions
-                const tePositions = [
-                    [0.25*a, 0.25*a, 0.25*a],
-                    [0.25*a, 0.75*a, 0.75*a],
-                    [0.75*a, 0.25*a, 0.75*a],
-                    [0.75*a, 0.75*a, 0.25*a]
-                ];
-                
-                // Add metal atoms (70% Hg, 30% Cd random distribution)
-                metalPositions.forEach(pos => {
-                    const element = Math.random() < 0.7 ? "Hg" : "Cd";
-                    m.addAtom({
-                        elem: element,
-                        x: pos[0],
-                        y: pos[1],
-                        z: pos[2],
-                        color: atomColors[element],
-                        radius: atomRadii[element] * 0.5  // Scale radius for better visualization
-                    });
-                });
-                
-                // Add Te atoms
-                tePositions.forEach(pos => {
-                    m.addAtom({
-                        elem: "Te",
-                        x: pos[0],
-                        y: pos[1],
-                        z: pos[2],
-                        color: atomColors["Te"],
-                        radius: atomRadii["Te"] * 0.5  // Scale radius for better visualization
-                    });
-                });
-                
-                // Add unit cell box
-                viewer.addUnitCell({
-                    a: a,
-                    b: a,
-                    c: a,
-                    alpha: 90,
-                    beta: 90,
-                    gamma: 90
-                });
-                
-                // Add bonds between Hg/Cd and Te
-                // In zinc-blende structure, each atom has 4 nearest neighbors
-                const bondCutoff = 3.0; // Å, adjusted for this structure
-                m.addBonds({
-                    threshold: bondCutoff,
-                    colormode: "color1"
-                });
+                // Iterate through the supercell
+                for (let i = 0; i < supercellSize; i++) {
+                    for (let j = 0; j < supercellSize; j++) {
+                        for (let k = 0; k < supercellSize; k++) {
+                            // Origin of this unit cell
+                            const origin = [
+                                i * latticeConstant,
+                                j * latticeConstant,
+                                k * latticeConstant
+                            ];
+                            
+                            // Add metal atoms (70% Hg, 30% Cd) at FCC positions
+                            const fccPositions = [
+                                [0, 0, 0],
+                                [0, 0.5, 0.5],
+                                [0.5, 0, 0.5],
+                                [0.5, 0.5, 0]
+                            ];
+                            
+                            fccPositions.forEach(pos => {
+                                const element = Math.random() < 0.7 ? "Hg" : "Cd";
+                                m.addAtom({
+                                    elem: element,
+                                    x: origin[0] + pos[0] * latticeConstant,
+                                    y: origin[1] + pos[1] * latticeConstant,
+                                    z: origin[2] + pos[2] * latticeConstant,
+                                    color: atomColors[element],
+                                    radius: atomRadii[element] * 0.3  // Scale radius for better visualization
+                                });
+                            });
+                            
+                            // Add Te atoms, shifted by (0.25, 0.25, 0.25) from metal positions
+                            const tePositions = [
+                                [0.25, 0.25, 0.25],
+                                [0.25, 0.75, 0.75],
+                                [0.75, 0.25, 0.75],
+                                [0.75, 0.75, 0.25]
+                            ];
+                            
+                            tePositions.forEach(pos => {
+                                m.addAtom({
+                                    elem: "Te",
+                                    x: origin[0] + pos[0] * latticeConstant,
+                                    y: origin[1] + pos[1] * latticeConstant,
+                                    z: origin[2] + pos[2] * latticeConstant,
+                                    color: atomColors["Te"],
+                                    radius: atomRadii["Te"] * 0.3  // Scale radius for better visualization
+                                });
+                            });
+                        }
+                    }
+                }
                 
                 return m;
             }
@@ -150,14 +140,31 @@
             // Create the structure
             let model = createHgCdTeStructure();
             
-            // Set initial style
-            viewer.setStyle({}, {sphere: {scale: 0.5}});
-            viewer.addStyle({elem: "Hg"}, {sphere: {color: "silver", scale: 0.5}});
-            viewer.addStyle({elem: "Cd"}, {sphere: {color: "goldenrod", scale: 0.5}});
-            viewer.addStyle({elem: "Te"}, {sphere: {color: "darkred", scale: 0.5}});
+            // Add bonds between atoms
+            model.addBonds({
+                threshold: 3.0,  // Adjusted for the zinc-blende structure
+                colormode: "color1"
+            });
+            
+            // Show unit cell
+            viewer.addUnitCell({
+                a: latticeConstant,
+                b: latticeConstant,
+                c: latticeConstant,
+                alpha: 90,
+                beta: 90,
+                gamma: 90,
+                box: {color: "black", linewidth: 2.0}
+            });
+            
+            // Set initial style to sphere
+            viewer.setStyle({}, {sphere: {scale: 0.7}});
             
             // Set initial view
+            viewer.setView([-20, -20, -20, 20, 20, 20]);
             viewer.zoomTo();
+            viewer.rotate(30, "y");
+            viewer.rotate(20, "x");
             viewer.render();
             
             // Set up controls
@@ -171,7 +178,8 @@
                         c: latticeConstant,
                         alpha: 90,
                         beta: 90,
-                        gamma: 90
+                        gamma: 90,
+                        box: {color: "black", linewidth: 2.0}
                     });
                 } else {
                     viewer.removeUnitCell();
@@ -179,13 +187,20 @@
                 viewer.render();
             });
             
+            let polyhedraVisible = false;
             $("#showPolyhedra").click(function() {
-                model.addSurface($3Dmol.SurfaceType.VDW, {
-                    opacity: 0.7,
-                    color: "white"
-                }, {
-                    elem: "Te"
-                });
+                polyhedraVisible = !polyhedraVisible;
+                if (polyhedraVisible) {
+                    // Add tetrahedral visualization
+                    viewer.addSurface($3Dmol.SurfaceType.VDW, {
+                        opacity: 0.5,
+                        color: "cyan"
+                    }, {
+                        elem: "Te"
+                    });
+                } else {
+                    viewer.removeAllSurfaces();
+                }
                 viewer.render();
             });
             
@@ -207,23 +222,26 @@
                 const style = $(this).val();
                 switch(style) {
                     case "sphere":
-                        viewer.setStyle({}, {sphere: {scale: 0.5}});
+                        viewer.setStyle({}, {sphere: {scale: 0.7}});
                         break;
                     case "stick":
-                        viewer.setStyle({}, {stick: {}});
+                        viewer.setStyle({}, {stick: {radius: 0.2}});
                         break;
                     case "line":
-                        viewer.setStyle({}, {line: {}});
+                        viewer.setStyle({}, {line: {width: 3}});
                         break;
                     case "cross":
-                        viewer.setStyle({}, {cross: {linewidth: 5}});
+                        viewer.setStyle({}, {cross: {linewidth: 3}});
                         break;
                 }
                 viewer.render();
             });
             
             $("#resetView").click(function() {
+                viewer.setView([-20, -20, -20, 20, 20, 20]);
                 viewer.zoomTo();
+                viewer.rotate(30, "y");
+                viewer.rotate(20, "x");
                 viewer.render();
             });
         });
