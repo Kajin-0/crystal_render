@@ -1,70 +1,118 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>HgCdTe Zincblende Structure Visualization</title>
-  <!-- Load 3Dmol.js library -->
-  <script src="https://3Dmol.csb.pitt.edu/build/3Dmol-min.js"></script>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background-color: #f7f7f7;
-      font-family: Arial, sans-serif;
-    }
-    #viewer {
-      width: 800px;
-      height: 600px;
-      margin: 20px auto;
-      border: 1px solid #ddd;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    }
-  </style>
+  <meta charset="utf-8">
+  <title>HgCdTe Zinc-Blende Structure Visualization</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol.js/2.0.0/3Dmol-min.js"></script>
 </head>
 <body>
-  <div id="viewer"></div>
+  <div id="container" style="height: 400px; width: 100%; position: relative;"></div>
+  
   <script>
-    // Lattice constant in Angstroms (typical for CdTe/HgTe zincblende)
-    var a = 6.48;
-    
-    // Calculate fractional positions (in Angstroms)
-    var a2 = (a/2).toFixed(3); // 3.240 Å
-    var a4 = (a/4).toFixed(3); // 1.620 Å
-    var a34 = ((3*a)/4).toFixed(3); // 4.860 Å
-    
-    // Build a minimal PDB string for the conventional zincblende cell.
-    // The conventional cell has 8 atoms: 4 Te (anions) and 4 cations.
-    // Here we assign two cation sites as Hg and two as Cd.
-    var pdbData =
-      "HETATM    1  TE  TEL     1" + "    " + "  0.000   0.000   0.000" + "  1.00 0.00           Te\n" +
-      "HETATM    2  TE  TEL     1" + "    " + "  " + a2 + "  " + a2 + "  0.000" + "  1.00 0.00           Te\n" +
-      "HETATM    3  TE  TEL     1" + "    " + "  " + a2 + "  0.000   " + a2 + ""   + "  1.00 0.00           Te\n" +
-      "HETATM    4  TE  TEL     1" + "    " + "  0.000   " + a2 + "  " + a2 + ""   + "  1.00 0.00           Te\n" +
-      "HETATM    5  HG  HGC     1" + "    " + "  " + a4 + "  " + a4 + "  " + a4 + ""   + "  1.00 0.00           Hg\n" +
-      "HETATM    6  CD  CDC     1" + "    " + "  " + a34 + "  " + a34 + "  " + a4 + ""   + "  1.00 0.00           Cd\n" +
-      "HETATM    7  HG  HGC     1" + "    " + "  " + a34 + "  " + a4 + "  " + a34 + ""   + "  1.00 0.00           Hg\n" +
-      "HETATM    8  CD  CDC     1" + "    " + "  " + a4 + "  " + a34 + "  " + a34 + ""   + "  1.00 0.00           Cd\n" +
-      "END";
-    
-    // Initialize the 3Dmol.js viewer in the 'viewer' div.
-    var element = document.getElementById("viewer");
-    var config = { backgroundColor: "#ffffff" };
-    var viewer = $3Dmol.createViewer(element, config);
-    
-    // Load the model from the PDB data
-    viewer.addModel(pdbData, "pdb");
-    
-    // Set distinct visual styles for each element
-    viewer.setStyle({elem:"Te"}, {sphere: {radius: 0.8, color: "teal"}, stick: {radius: 0.2, color: "teal"}});
-    viewer.setStyle({elem:"Hg"}, {sphere: {radius: 0.8, color: "silver"}, stick: {radius: 0.2, color: "silver"}});
-    viewer.setStyle({elem:"Cd"}, {sphere: {radius: 0.8, color: "goldenrod"}, stick: {radius: 0.2, color: "goldenrod"}});
-    
-    // Optionally add a unit cell box to outline the lattice parameters
-    viewer.addUnitCell({ cell: { a: a, b: a, c: a, alpha: 90, beta: 90, gamma: 90 } });
-    
-    // Center the view and render the scene
-    viewer.zoomTo();
-    viewer.render();
+    // Wait for document to load
+    document.addEventListener('DOMContentLoaded', function() {
+      // Create viewer
+      let element = $('#container');
+      let config = { backgroundColor: 'white' };
+      let viewer = $3Dmol.createViewer(element, config);
+      
+      // Define lattice constant for HgCdTe
+      const a = 6.46; // Angstroms
+      
+      // Create model
+      let m = viewer.addModel();
+      
+      // Define atom properties
+      const atomTypes = {
+        "Hg": { color: "silver", radius: 1.49 * 0.3 },
+        "Cd": { color: "goldenrod", radius: 1.44 * 0.3 },
+        "Te": { color: "darkred", radius: 1.37 * 0.3 }
+      };
+      
+      // Create a 2x2x2 supercell
+      for (let i = 0; i < 2; i++) {
+        for (let j = 0; j < 2; j++) {
+          for (let k = 0; k < 2; k++) {
+            // Base position for this unit cell
+            const base = [i * a, j * a, k * a];
+            
+            // Add metal atoms (Hg/Cd) at FCC positions
+            const fccPositions = [
+              [0, 0, 0],
+              [0, 0.5, 0.5],
+              [0.5, 0, 0.5],
+              [0.5, 0.5, 0]
+            ];
+            
+            fccPositions.forEach(pos => {
+              // Randomly assign Hg or Cd (70/30 ratio)
+              const element = Math.random() < 0.7 ? "Hg" : "Cd";
+              const props = atomTypes[element];
+              
+              m.addAtom({
+                elem: element,
+                x: base[0] + pos[0] * a,
+                y: base[1] + pos[1] * a,
+                z: base[2] + pos[2] * a,
+                color: props.color,
+                radius: props.radius
+              });
+            });
+            
+            // Add Te atoms
+            const tePositions = [
+              [0.25, 0.25, 0.25],
+              [0.25, 0.75, 0.75],
+              [0.75, 0.25, 0.75],
+              [0.75, 0.75, 0.25]
+            ];
+            
+            tePositions.forEach(pos => {
+              const props = atomTypes["Te"];
+              
+              m.addAtom({
+                elem: "Te",
+                x: base[0] + pos[0] * a,
+                y: base[1] + pos[1] * a,
+                z: base[2] + pos[2] * a,
+                color: props.color,
+                radius: props.radius
+              });
+            });
+          }
+        }
+      }
+      
+      // Add bonds
+      m.addBonds({
+        threshold: 3.0,
+        colormode: "color1"
+      });
+      
+      // Add unit cell
+      viewer.addUnitCell({
+        a: a,
+        b: a,
+        c: a,
+        alpha: 90,
+        beta: 90,
+        gamma: 90,
+        box: {color: "black", linewidth: 2.0}
+      });
+      
+      // Set display style
+      viewer.setStyle({}, {sphere: {scale: 0.7}});
+      
+      // Set initial view
+      viewer.setView([-20, -20, -20, 20, 20, 20]);
+      viewer.zoomTo();
+      viewer.rotate(30, "y");
+      viewer.rotate(20, "x");
+      
+      // Render the scene
+      viewer.render();
+    });
   </script>
 </body>
 </html>
