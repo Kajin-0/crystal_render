@@ -1,250 +1,70 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>HgCdTe Zinc-Blende Structure Visualization</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol.js/2.0.0/3Dmol-min.js"></script>
-    <style>
-        #container {
-            width: 100%;
-            height: 400px;
-            position: relative;
-        }
-        .controls {
-            margin: 10px 0;
-            padding: 10px;
-            background-color: #f0f0f0;
-            border-radius: 5px;
-        }
-        .info {
-            margin: 10px 0;
-            padding: 10px;
-            background-color: #e0f0ff;
-            border-radius: 5px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>HgCdTe Zincblende Structure Visualization</title>
+  <!-- Load 3Dmol.js library -->
+  <script src="https://3Dmol.csb.pitt.edu/build/3Dmol-min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f7f7f7;
+      font-family: Arial, sans-serif;
+    }
+    #viewer {
+      width: 800px;
+      height: 600px;
+      margin: 20px auto;
+      border: 1px solid #ddd;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+  </style>
 </head>
 <body>
-    <div class="info">
-        <h2>HgCdTe (Hg<sub>1-x</sub>Cd<sub>x</sub>Te) Zinc-Blende Structure</h2>
-        <p>Lattice constant: 6.46 Å (for x ≈ 0.3, varies with composition)</p>
-        <p>Space group: F43m (zinc-blende/sphalerite structure)</p>
-    </div>
+  <div id="viewer"></div>
+  <script>
+    // Lattice constant in Angstroms (typical for CdTe/HgTe zincblende)
+    var a = 6.48;
     
-    <div id="container"></div>
+    // Calculate fractional positions (in Angstroms)
+    var a2 = (a/2).toFixed(3); // 3.240 Å
+    var a4 = (a/4).toFixed(3); // 1.620 Å
+    var a34 = ((3*a)/4).toFixed(3); // 4.860 Å
     
-    <div class="controls">
-        <button id="showUnitCell">Toggle Unit Cell</button>
-        <button id="showPolyhedra">Toggle Polyhedra</button>
-        <button id="showBonds">Toggle Bonds</button>
-        <label>
-            Style:
-            <select id="styleSelect">
-                <option value="sphere">Sphere</option>
-                <option value="stick">Stick</option>
-                <option value="line">Line</option>
-                <option value="cross">Cross</option>
-            </select>
-        </label>
-        <button id="resetView">Reset View</button>
-    </div>
+    // Build a minimal PDB string for the conventional zincblende cell.
+    // The conventional cell has 8 atoms: 4 Te (anions) and 4 cations.
+    // Here we assign two cation sites as Hg and two as Cd.
+    var pdbData =
+      "HETATM    1  TE  TEL     1" + "    " + "  0.000   0.000   0.000" + "  1.00 0.00           Te\n" +
+      "HETATM    2  TE  TEL     1" + "    " + "  " + a2 + "  " + a2 + "  0.000" + "  1.00 0.00           Te\n" +
+      "HETATM    3  TE  TEL     1" + "    " + "  " + a2 + "  0.000   " + a2 + ""   + "  1.00 0.00           Te\n" +
+      "HETATM    4  TE  TEL     1" + "    " + "  0.000   " + a2 + "  " + a2 + ""   + "  1.00 0.00           Te\n" +
+      "HETATM    5  HG  HGC     1" + "    " + "  " + a4 + "  " + a4 + "  " + a4 + ""   + "  1.00 0.00           Hg\n" +
+      "HETATM    6  CD  CDC     1" + "    " + "  " + a34 + "  " + a34 + "  " + a4 + ""   + "  1.00 0.00           Cd\n" +
+      "HETATM    7  HG  HGC     1" + "    " + "  " + a34 + "  " + a4 + "  " + a34 + ""   + "  1.00 0.00           Hg\n" +
+      "HETATM    8  CD  CDC     1" + "    " + "  " + a4 + "  " + a34 + "  " + a34 + ""   + "  1.00 0.00           Cd\n" +
+      "END";
     
-    <script>
-        $(document).ready(function() {
-            // Initialize 3Dmol viewer
-            let element = $("#container");
-            let config = { backgroundColor: 'white' };
-            let viewer = $3Dmol.createViewer(element, config);
-            
-            // HgCdTe parameters (zinc-blende structure)
-            // Lattice constant for Hg0.7Cd0.3Te is approximately 6.46 Å
-            const latticeConstant = 6.46;
-            
-            // Function to create the HgCdTe zinc-blende structure
-            function createHgCdTeStructure() {
-                // Create a model to hold all the atoms
-                let m = viewer.addModel();
-                
-                // Define atom colors and radii
-                const atomColors = {
-                    "Hg": "silver",
-                    "Cd": "goldenrod",
-                    "Te": "darkred"
-                };
-                
-                const atomRadii = {
-                    "Hg": 1.49,
-                    "Cd": 1.44,
-                    "Te": 1.37
-                };
-                
-                // Create a 2x2x2 supercell for better visibility
-                const supercellSize = 2;
-                
-                // Iterate through the supercell
-                for (let i = 0; i < supercellSize; i++) {
-                    for (let j = 0; j < supercellSize; j++) {
-                        for (let k = 0; k < supercellSize; k++) {
-                            // Origin of this unit cell
-                            const origin = [
-                                i * latticeConstant,
-                                j * latticeConstant,
-                                k * latticeConstant
-                            ];
-                            
-                            // Add metal atoms (70% Hg, 30% Cd) at FCC positions
-                            const fccPositions = [
-                                [0, 0, 0],
-                                [0, 0.5, 0.5],
-                                [0.5, 0, 0.5],
-                                [0.5, 0.5, 0]
-                            ];
-                            
-                            fccPositions.forEach(pos => {
-                                const element = Math.random() < 0.7 ? "Hg" : "Cd";
-                                m.addAtom({
-                                    elem: element,
-                                    x: origin[0] + pos[0] * latticeConstant,
-                                    y: origin[1] + pos[1] * latticeConstant,
-                                    z: origin[2] + pos[2] * latticeConstant,
-                                    color: atomColors[element],
-                                    radius: atomRadii[element] * 0.3  // Scale radius for better visualization
-                                });
-                            });
-                            
-                            // Add Te atoms, shifted by (0.25, 0.25, 0.25) from metal positions
-                            const tePositions = [
-                                [0.25, 0.25, 0.25],
-                                [0.25, 0.75, 0.75],
-                                [0.75, 0.25, 0.75],
-                                [0.75, 0.75, 0.25]
-                            ];
-                            
-                            tePositions.forEach(pos => {
-                                m.addAtom({
-                                    elem: "Te",
-                                    x: origin[0] + pos[0] * latticeConstant,
-                                    y: origin[1] + pos[1] * latticeConstant,
-                                    z: origin[2] + pos[2] * latticeConstant,
-                                    color: atomColors["Te"],
-                                    radius: atomRadii["Te"] * 0.3  // Scale radius for better visualization
-                                });
-                            });
-                        }
-                    }
-                }
-                
-                return m;
-            }
-            
-            // Create the structure
-            let model = createHgCdTeStructure();
-            
-            // Add bonds between atoms
-            model.addBonds({
-                threshold: 3.0,  // Adjusted for the zinc-blende structure
-                colormode: "color1"
-            });
-            
-            // Show unit cell
-            viewer.addUnitCell({
-                a: latticeConstant,
-                b: latticeConstant,
-                c: latticeConstant,
-                alpha: 90,
-                beta: 90,
-                gamma: 90,
-                box: {color: "black", linewidth: 2.0}
-            });
-            
-            // Set initial style to sphere
-            viewer.setStyle({}, {sphere: {scale: 0.7}});
-            
-            // Set initial view
-            viewer.setView([-20, -20, -20, 20, 20, 20]);
-            viewer.zoomTo();
-            viewer.rotate(30, "y");
-            viewer.rotate(20, "x");
-            viewer.render();
-            
-            // Set up controls
-            let unitCellVisible = true;
-            $("#showUnitCell").click(function() {
-                unitCellVisible = !unitCellVisible;
-                if (unitCellVisible) {
-                    viewer.addUnitCell({
-                        a: latticeConstant,
-                        b: latticeConstant,
-                        c: latticeConstant,
-                        alpha: 90,
-                        beta: 90,
-                        gamma: 90,
-                        box: {color: "black", linewidth: 2.0}
-                    });
-                } else {
-                    viewer.removeUnitCell();
-                }
-                viewer.render();
-            });
-            
-            let polyhedraVisible = false;
-            $("#showPolyhedra").click(function() {
-                polyhedraVisible = !polyhedraVisible;
-                if (polyhedraVisible) {
-                    // Add tetrahedral visualization
-                    viewer.addSurface($3Dmol.SurfaceType.VDW, {
-                        opacity: 0.5,
-                        color: "cyan"
-                    }, {
-                        elem: "Te"
-                    });
-                } else {
-                    viewer.removeAllSurfaces();
-                }
-                viewer.render();
-            });
-            
-            let bondsVisible = true;
-            $("#showBonds").click(function() {
-                bondsVisible = !bondsVisible;
-                if (bondsVisible) {
-                    model.addBonds({
-                        threshold: 3.0,
-                        colormode: "color1"
-                    });
-                } else {
-                    model.removeBonds();
-                }
-                viewer.render();
-            });
-            
-            $("#styleSelect").change(function() {
-                const style = $(this).val();
-                switch(style) {
-                    case "sphere":
-                        viewer.setStyle({}, {sphere: {scale: 0.7}});
-                        break;
-                    case "stick":
-                        viewer.setStyle({}, {stick: {radius: 0.2}});
-                        break;
-                    case "line":
-                        viewer.setStyle({}, {line: {width: 3}});
-                        break;
-                    case "cross":
-                        viewer.setStyle({}, {cross: {linewidth: 3}});
-                        break;
-                }
-                viewer.render();
-            });
-            
-            $("#resetView").click(function() {
-                viewer.setView([-20, -20, -20, 20, 20, 20]);
-                viewer.zoomTo();
-                viewer.rotate(30, "y");
-                viewer.rotate(20, "x");
-                viewer.render();
-            });
-        });
-    </script>
+    // Initialize the 3Dmol.js viewer in the 'viewer' div.
+    var element = document.getElementById("viewer");
+    var config = { backgroundColor: "#ffffff" };
+    var viewer = $3Dmol.createViewer(element, config);
+    
+    // Load the model from the PDB data
+    viewer.addModel(pdbData, "pdb");
+    
+    // Set distinct visual styles for each element
+    viewer.setStyle({elem:"Te"}, {sphere: {radius: 0.8, color: "teal"}, stick: {radius: 0.2, color: "teal"}});
+    viewer.setStyle({elem:"Hg"}, {sphere: {radius: 0.8, color: "silver"}, stick: {radius: 0.2, color: "silver"}});
+    viewer.setStyle({elem:"Cd"}, {sphere: {radius: 0.8, color: "goldenrod"}, stick: {radius: 0.2, color: "goldenrod"}});
+    
+    // Optionally add a unit cell box to outline the lattice parameters
+    viewer.addUnitCell({ cell: { a: a, b: a, c: a, alpha: 90, beta: 90, gamma: 90 } });
+    
+    // Center the view and render the scene
+    viewer.zoomTo();
+    viewer.render();
+  </script>
 </body>
 </html>
