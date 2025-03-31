@@ -1,118 +1,239 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>HgCdTe Zinc-Blende Structure Visualization</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol.js/2.0.0/3Dmol-min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zincblende Structure Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/3dmol/1.9.0/3Dmol-min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+        }
+
+        #container {
+            display: flex;
+            height: 100vh;
+        }
+
+        #viewer-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #controls {
+            width: 300px;
+            background: #2a2a2a;
+            padding: 20px;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.2);
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin: 10px 0;
+            cursor: pointer;
+        }
+
+        input[type="checkbox"] {
+            margin-right: 10px;
+        }
+
+        h2 {
+            color: #4CAF50;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+
+        .button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .button:hover {
+            background: #45a049;
+        }
+    </style>
 </head>
 <body>
-  <div id="container" style="height: 400px; width: 100%; position: relative;"></div>
-  
-  <script>
-    // Wait for document to load
-    document.addEventListener('DOMContentLoaded', function() {
-      // Create viewer
-      let element = $('#container');
-      let config = { backgroundColor: 'white' };
-      let viewer = $3Dmol.createViewer(element, config);
-      
-      // Define lattice constant for HgCdTe
-      const a = 6.46; // Angstroms
-      
-      // Create model
-      let m = viewer.addModel();
-      
-      // Define atom properties
-      const atomTypes = {
-        "Hg": { color: "silver", radius: 1.49 * 0.3 },
-        "Cd": { color: "goldenrod", radius: 1.44 * 0.3 },
-        "Te": { color: "darkred", radius: 1.37 * 0.3 }
-      };
-      
-      // Create a 2x2x2 supercell
-      for (let i = 0; i < 2; i++) {
-        for (let j = 0; j < 2; j++) {
-          for (let k = 0; k < 2; k++) {
-            // Base position for this unit cell
-            const base = [i * a, j * a, k * a];
+    <div id="container">
+        <div id="viewer-container"></div>
+        <div id="controls">
+            <h2>Visualization Controls</h2>
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="toggleUnitCell" checked> Show Unit Cell
+                </label>
+                <label>
+                    <input type="checkbox" id="toggleAtomsA" checked> Show Cations (Zn)
+                </label>
+                <label>
+                    <input type="checkbox" id="toggleAtomsB" checked> Show Anions (S)
+                </label>
+                <label>
+                    <input type="checkbox" id="toggleBonds" checked> Show Bonds
+                </label>
+            </div>
+            <button class="button" onclick="resetView()">Reset View</button>
             
-            // Add metal atoms (Hg/Cd) at FCC positions
+            <h2>Structure Information</h2>
+            <p>Zincblende (ZnS) structure:</p>
+            <ul>
+                <li>Face-centered cubic lattice</li>
+                <li>Tetrahedral coordination</li>
+                <li>4 formula units per cell</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Initialize viewer
+        let viewer = $3Dmol.createViewer("viewer-container", {
+            backgroundColor: 0x1a1a1a
+        });
+
+        // Unit cell parameters
+        const cellSize = 10; // Angstroms
+        const atomRadius = 0.4;
+        const bondRadius = 0.1;
+
+        // Generate zincblende structure coordinates
+        function generateZincblende() {
+            let atoms = [];
+            let bonds = [];
+            
+            // FCC positions for cation (Zn)
             const fccPositions = [
-              [0, 0, 0],
-              [0, 0.5, 0.5],
-              [0.5, 0, 0.5],
-              [0.5, 0.5, 0]
+                [0,0,0], [0,0.5,0.5], [0.5,0,0.5], [0.5,0.5,0],
+                [0.5,0.5,0.5], [0.5,0,0], [0,0.5,0], [0,0,0.5]
             ];
-            
+
+            // Tetrahedral positions for anion (S)
+            const tetraPositions = [
+                [0.25,0.25,0.25], [0.25,0.75,0.75],
+                [0.75,0.25,0.75], [0.75,0.75,0.25]
+            ];
+
+            // Add atoms
             fccPositions.forEach(pos => {
-              // Randomly assign Hg or Cd (70/30 ratio)
-              const element = Math.random() < 0.7 ? "Hg" : "Cd";
-              const props = atomTypes[element];
-              
-              m.addAtom({
-                elem: element,
-                x: base[0] + pos[0] * a,
-                y: base[1] + pos[1] * a,
-                z: base[2] + pos[2] * a,
-                color: props.color,
-                radius: props.radius
-              });
+                atoms.push({
+                    x: pos[0] * cellSize,
+                    y: pos[1] * cellSize,
+                    z: pos[2] * cellSize,
+                    elem: 'Zn',
+                    color: '#4CAF50' // Green for Zn
+                });
             });
-            
-            // Add Te atoms
-            const tePositions = [
-              [0.25, 0.25, 0.25],
-              [0.25, 0.75, 0.75],
-              [0.75, 0.25, 0.75],
-              [0.75, 0.75, 0.25]
-            ];
-            
-            tePositions.forEach(pos => {
-              const props = atomTypes["Te"];
-              
-              m.addAtom({
-                elem: "Te",
-                x: base[0] + pos[0] * a,
-                y: base[1] + pos[1] * a,
-                z: base[2] + pos[2] * a,
-                color: props.color,
-                radius: props.radius
-              });
+
+            tetraPositions.forEach(pos => {
+                atoms.push({
+                    x: pos[0] * cellSize,
+                    y: pos[1] * cellSize,
+                    z: pos[2] * cellSize,
+                    elem: 'S',
+                    color: '#FFC107' // Yellow for S
+                });
             });
-          }
+
+            // Create bonds between nearest neighbors (threshold ~2.4Å for ZnS)
+            const bondThreshold = 2.4;
+            atoms.forEach((atom1, i) => {
+                atoms.slice(i+1).forEach((atom2, j) => {
+                    const dx = atom1.x - atom2.x;
+                    const dy = atom1.y - atom2.y;
+                    const dz = atom1.z - atom2.z;
+                    const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                    if (dist < bondThreshold) {
+                        bonds.push({
+                            atom1: i,
+                            atom2: i + j + 1,
+                            radius: bondRadius
+                        });
+                    }
+                });
+            });
+
+            return { atoms, bonds };
         }
-      }
-      
-      // Add bonds
-      m.addBonds({
-        threshold: 3.0,
-        colormode: "color1"
-      });
-      
-      // Add unit cell
-      viewer.addUnitCell({
-        a: a,
-        b: a,
-        c: a,
-        alpha: 90,
-        beta: 90,
-        gamma: 90,
-        box: {color: "black", linewidth: 2.0}
-      });
-      
-      // Set display style
-      viewer.setStyle({}, {sphere: {scale: 0.7}});
-      
-      // Set initial view
-      viewer.setView([-20, -20, -20, 20, 20, 20]);
-      viewer.zoomTo();
-      viewer.rotate(30, "y");
-      viewer.rotate(20, "x");
-      
-      // Render the scene
-      viewer.render();
-    });
-  </script>
+
+        // Add unit cell visualization
+        function addUnitCell() {
+            const lines = [];
+            const corners = [
+                [0,0,0], [cellSize,0,0],
+                [0,cellSize,0], [0,0,cellSize],
+                [cellSize,cellSize,0], [cellSize,0,cellSize],
+                [0,cellSize,cellSize], [cellSize,cellSize,cellSize]
+            ];
+
+            const edges = [
+                [0,1], [0,2], [0,3],
+                [1,4], [1,5],
+                [2,4], [2,6],
+                [3,5], [3,6],
+                [4,7], [5,7], [6,7]
+            ];
+
+            edges.forEach(pair => {
+                viewer.addLine({
+                    start: corners[pair[0]],
+                    end: corners[pair[1]],
+                    color: 'white',
+                    radius: 0.05
+                });
+            });
+        }
+
+        // Toggle visibility functions
+        function toggleVisibility(selector, visible) {
+            viewer.setStyle({[selector]: {}}, {hidden: !visible});
+            viewer.render();
+        }
+
+        // Initialize structure
+        const structure = generateZincblende();
+        viewer.addModelsAsFrames(structure.atoms);
+        viewer.addBonds(structure.bonds);
+        addUnitCell();
+
+        viewer.setStyle({elem: 'Zn'}, {sphere: {radius: atomRadius}});
+        viewer.setStyle({elem: 'S'}, {sphere: {radius: atomRadius}});
+        viewer.zoomTo();
+        viewer.render();
+
+        // Control bindings
+        document.getElementById('toggleUnitCell').addEventListener('change', (e) => {
+            viewer.setStyle({}, {line: {hidden: !e.target.checked}});
+            viewer.render();
+        });
+
+        document.getElementById('toggleAtomsA').addEventListener('change', (e) => {
+            toggleVisibility({elem: 'Zn'}, e.target.checked);
+        });
+
+        document.getElementById('toggleAtomsB').addEventListener('change', (e) => {
+            toggleVisibility({elem: 'S'}, e.target.checked);
+        });
+
+        document.getElementById('toggleBonds').addEventListener('change', (e) => {
+            viewer.setStyle({}, {bond: {hidden: !e.target.checked}});
+            viewer.render();
+        });
+
+        function resetView() {
+            viewer.zoomTo();
+            viewer.render();
+        }
+    </script>
 </body>
 </html>
