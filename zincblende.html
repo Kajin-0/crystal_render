@@ -177,50 +177,321 @@
   </div>
 
   <script>
-    // Entire script remains unchanged, except here in renderCore():
-    function renderCore() {
-      viewer.removeAllModels(); viewer.removeAllShapes();
-      for (let label of atomLabels) viewer.removeLabel(label); atomLabels = [];
-      for (let lineId of cellLines) viewer.removeShape(lineId); cellLines = [];
-      if (cellLabel) viewer.removeLabel(cellLabel); cellLabel = null;
+    $(document).ready(function() {
+      // Initialize the viewer
+      let element = $("#viewer");
+      let config = {
+        backgroundColor: "white",
+        antialias: true
+      };
+      let viewer = $3Dmol.createViewer(element, config);
 
-      if (!currentAtoms || currentAtoms.length === 0) { viewer.render(); return; }
+      // Define constants
+      const a_HgTe = 6.46; // Å
+      const a_CdTe = 6.48; // Å
 
-      let cdRatio = parseFloat($("#composition").val());
-      $("#composition-info").html(`Composition: Hg<sub>${(1-cdRatio).toFixed(1)}</sub>Cd<sub>${cdRatio.toFixed(1)}</sub>Te`);
-      $("#lattice-info").text(`Lattice constant: ${latticeConstant.toFixed(2)} Å`);
+      // Colors for atoms
+      const atomColors = {
+        "Hg": "#E000E0", // Magenta
+        "Cd": "#CCCCCC", // Light Grey
+        "Te": "#33CC33"  // Green
+      };
 
-      let model = viewer.addModel();
-      model.addAtoms(currentAtoms);
-      model.connectBonds(); // ✅ FIX: This enables sticks and ball-and-stick modes
+      // State variables
+      let latticeConstant = a_HgTe; // Will be updated
+      let labelsShown = false;
+      let cellShown = false;
+      let atomLabels = [];
+      let cellLines = [];
+      let cellLabel = null;
+      let currentViewStyle = "ballAndStick";
+      let currentSupercell = 1;
+      let currentAtoms = []; // Stores the currently generated atom data
 
-      let style = {};
-      const baseStickRadius = 0.1;
-      const ballScale = 0.35;
-      const stickModeAtomScale = 0.05;
-      const atomColors = { "Hg": "#E000E0", "Cd": "#CCCCCC", "Te": "#33CC33" };
-      const colorScheme = { prop: 'elem', map: atomColors };
-
-      switch (currentViewStyle) {
-        case "stick":
-          style = {
-            stick: { radius: baseStickRadius, colorscheme: colorScheme },
-            sphere: { scale: stickModeAtomScale, colorscheme: colorScheme }
-          }; break;
-        case "ballAndStick":
-          style = {
-            stick: { radius: baseStickRadius, colorscheme: colorScheme },
-            sphere: { scale: ballScale, colorscheme: colorScheme }
-          }; break;
-        case "spacefill":
-          style = { sphere: { colorscheme: colorScheme } }; break;
+      // Function to generate atom data
+      function generateAtomData(cdRatio = 0.3, cellSize = 1) {
+        let atoms = [];
+        const currentLatticeConstant = a_HgTe * (1 - cdRatio) + a_CdTe * cdRatio;
+        for (let i = 0; i < cellSize; i++) {
+          for (let j = 0; j < cellSize; j++) {
+            for (let k = 0; k < cellSize; k++) {
+              let cationPositions = [[0,0,0], [0,0.5,0.5], [0.5,0,0.5], [0.5,0.5,0]];
+              let anionPositions = [[0.25,0.25,0.25], [0.25,0.75,0.75], [0.75,0.25,0.75], [0.75,0.75,0.25]];
+              cationPositions.forEach(pos => {
+                let elemType = Math.random() < cdRatio ? "Cd" : "Hg";
+                atoms.push({ elem: elemType, x: (pos[0]+i)*currentLatticeConstant, y: (pos[1]+j)*currentLatticeConstant, z: (pos[2]+k)*currentLatticeConstant });
+              });
+              anionPositions.forEach(pos => {
+                atoms.push({ elem: "Te", x: (pos[0]+i)*currentLatticeConstant, y: (pos[1]+j)*currentLatticeConstant, z: (pos[2]+k)*currentLatticeConstant });
+              });
+            }
+          }
+        }
+        atoms.forEach((atom, index) => atom.serial = index); // Add serial ID
+        return atoms;
       }
 
-      viewer.setStyle({}, style);
-      if (cellShown) drawUnitCellOutline();
-      if (labelsShown) addAtomLabels();
-      viewer.zoomTo(); viewer.render();
-    }
+      // Function to add atom labels
+      function addAtomLabels() {
+        for (let label of atomLabels) viewer.removeLabel(label);
+        atomLabels = [];
+        if (!labelsShown || !currentAtoms || currentAtoms.length === 0) return;
+        const center = { 
+          x: (currentSupercell * latticeConstant) / 2, 
+          y: (currentSupercell * latticeConstant) / 2, 
+          z: (currentSupercell * latticeConstant) / 2 
+        };
+        const baseCellLimit = latticeConstant;
+        currentAtoms.forEach(atom => {
+          if (atom.x < baseCellLimit && atom.y < baseCellLimit && atom.z < baseCellLimit) {
+            let dx = atom.x - center.x, dy = atom.y - center.y, dz = atom.z - center.z;
+            let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+            const offsetFactor = 1.5;
+            let labelPos = { x: atom.x, y: atom.y, z: atom.z };
+            if (dist > 0.01) {
+              labelPos.x += (dx / dist) * offsetFactor;
+              labelPos.y += (dy / dist) * offsetFactor;
+              labelPos.z += (dz / dist) * offsetFactor;
+            } else {
+              labelPos.x += offsetFactor;
+            }
+            let labelId = viewer.addLabel(atom.elem, { 
+              position: labelPos, 
+              backgroundColor: "rgba(255,255,255,0.7)", 
+              fontColor: "#333333", 
+              fontSize: 12, 
+              showBackground: true, 
+              backgroundOpacity: 0.5 
+            });
+            atomLabels.push(labelId);
+          }
+        });
+      }
+
+      // Function to draw unit cell outline
+      function drawUnitCellOutline() {
+        for (let lineId of cellLines) viewer.removeShape(lineId);
+        cellLines = [];
+        if (cellLabel) viewer.removeLabel(cellLabel);
+        cellLabel = null;
+        if (!cellShown) return;
+        const cellLength = latticeConstant * currentSupercell;
+        const vertices = [ 
+          [0,0,0], [cellLength,0,0], [0,cellLength,0], [cellLength,cellLength,0], 
+          [0,0,cellLength], [cellLength,0,cellLength], [0,cellLength,cellLength], [cellLength,cellLength,cellLength] 
+        ];
+        const edges = [ [0,1],[0,2],[1,3],[2,3],[4,5],[4,6],[5,7],[6,7],[0,4],[1,5],[2,6],[3,7] ];
+        edges.forEach(edge => {
+          const start = { x: vertices[edge[0]][0], y: vertices[edge[0]][1], z: vertices[edge[0]][2] };
+          const end = { x: vertices[edge[1]][0], y: vertices[edge[1]][1], z: vertices[edge[1]][2] };
+          let lineId = viewer.addCylinder({ 
+            start: start, 
+            end: end, 
+            radius: 0.05, 
+            color: "#555555", 
+            dashed: true, 
+            dashLength: 0.4, 
+            gapLength: 0.2 
+          });
+          cellLines.push(lineId);
+        });
+        if (currentSupercell === 1) {
+          cellLabel = viewer.addLabel(`a = ${latticeConstant.toFixed(2)} Å`, { 
+            position: { x: cellLength/2, y: -1.0, z: -1.0 }, 
+            backgroundColor: "rgba(255,255,255,0.8)", 
+            fontColor: "#333333", 
+            fontSize: 14, 
+            showBackground: true, 
+            backgroundOpacity: 0.8 
+          });
+        }
+      }
+
+      // CORE RENDERING FUNCTION
+      function renderCore() {
+        viewer.removeAllModels();
+        viewer.removeAllShapes();
+        for (let label of atomLabels) viewer.removeLabel(label);
+        atomLabels = [];
+        for (let lineId of cellLines) viewer.removeShape(lineId);
+        cellLines = [];
+        if (cellLabel) viewer.removeLabel(cellLabel);
+        cellLabel = null;
+
+        if (!currentAtoms || currentAtoms.length === 0) {
+          viewer.render();
+          return;
+        }
+
+        let cdRatio = parseFloat($("#composition").val());
+        $("#composition-info").html(`Composition: Hg<sub>${(1 - cdRatio).toFixed(1)}</sub>Cd<sub>${cdRatio.toFixed(1)}</sub>Te`);
+        $("#lattice-info").text(`Lattice constant: ${latticeConstant.toFixed(2)} Å`);
+
+        let model = viewer.addModel();
+        model.addAtoms(currentAtoms);
+        // Connect bonds using an explicit maximum bond length
+        model.connectBonds({maxbond: 3.0});
+
+        let style = {};
+        const baseStickRadius = 0.1;
+        const ballScale = 0.35;
+        const stickModeAtomScale = 0.05;
+        const colorScheme = { prop: 'elem', map: atomColors };
+
+        switch (currentViewStyle) {
+          case "stick":
+            style = {
+              stick: { radius: baseStickRadius, colorscheme: colorScheme },
+              sphere: { scale: stickModeAtomScale, colorscheme: colorScheme }
+            };
+            break;
+          case "ballAndStick":
+            style = {
+              stick: { radius: baseStickRadius, colorscheme: colorScheme },
+              sphere: { scale: ballScale, colorscheme: colorScheme }
+            };
+            break;
+          case "spacefill":
+            style = { sphere: { colorscheme: colorScheme } };
+            break;
+        }
+
+        viewer.setStyle({}, style);
+        if (cellShown) drawUnitCellOutline();
+        if (labelsShown) addAtomLabels();
+
+        viewer.zoomTo();
+        viewer.render();
+      }
+
+      // Function to regenerate atoms and render
+      function regenerateAndRender() {
+        let cdRatio = parseFloat($("#composition").val());
+        latticeConstant = a_HgTe * (1 - cdRatio) + a_CdTe * cdRatio;
+        $("#composition-value").text(`x = ${cdRatio.toFixed(1)}`);
+        currentAtoms = generateAtomData(cdRatio, currentSupercell);
+        renderCore();
+      }
+
+      // Function to update view options and render
+      function redrawView() {
+        renderCore();
+      }
+
+      // Function to update active button styling
+      function updateActiveButtons(group, activeButton) {
+        let buttons;
+        switch(group) {
+          case "visualization":
+            buttons = "#btn-stick, #btn-ball-stick, #btn-spacefill";
+            break;
+          case "supercell":
+            buttons = "#btn-1x1x1, #btn-2x2x2";
+            break;
+          case "labels":
+            buttons = "#btn-show-labels, #btn-hide-labels";
+            break;
+          case "cell":
+            buttons = "#btn-show-cell, #btn-hide-cell";
+            break;
+          default:
+            return;
+        }
+        $(buttons).removeClass("active");
+        $(activeButton).addClass("active");
+      }
+
+      // Event listeners
+      $("#composition").on("input", regenerateAndRender);
+      $("#btn-1x1x1").click(function() {
+        if (currentSupercell !== 1) {
+          currentSupercell = 1;
+          updateActiveButtons("supercell", this);
+          regenerateAndRender();
+        }
+      });
+      $("#btn-2x2x2").click(function() {
+        if (currentSupercell !== 2) {
+          currentSupercell = 2;
+          updateActiveButtons("supercell", this);
+          regenerateAndRender();
+        }
+      });
+      $("#btn-stick").click(function() {
+        if (currentViewStyle !== "stick") {
+          currentViewStyle = "stick";
+          updateActiveButtons("visualization", this);
+          redrawView();
+        }
+      });
+      $("#btn-ball-stick").click(function() {
+        if (currentViewStyle !== "ballAndStick") {
+          currentViewStyle = "ballAndStick";
+          updateActiveButtons("visualization", this);
+          redrawView();
+        }
+      });
+      $("#btn-spacefill").click(function() {
+        if (currentViewStyle !== "spacefill") {
+          currentViewStyle = "spacefill";
+          updateActiveButtons("visualization", this);
+          redrawView();
+        }
+      });
+      $("#btn-show-labels").click(function() {
+        if (!labelsShown) {
+          labelsShown = true;
+          updateActiveButtons("labels", this);
+          redrawView();
+        }
+      });
+      $("#btn-hide-labels").click(function() {
+        if (labelsShown) {
+          labelsShown = false;
+          updateActiveButtons("labels", this);
+          redrawView();
+        }
+      });
+      $("#btn-show-cell").click(function() {
+        if (!cellShown) {
+          cellShown = true;
+          updateActiveButtons("cell", this);
+          redrawView();
+        }
+      });
+      $("#btn-hide-cell").click(function() {
+        if (cellShown) {
+          cellShown = false;
+          updateActiveButtons("cell", this);
+          redrawView();
+        }
+      });
+      $("#btn-spin").click(function() {
+        viewer.spin(true);
+      });
+      $("#btn-stop").click(function() {
+        viewer.spin(false);
+      });
+      $("#btn-screenshot").click(function() {
+        let imageData = viewer.pngURI();
+        let link = document.createElement('a');
+        link.download = 'HgCdTe-zincblende.png';
+        link.href = imageData;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      });
+      $(window).on('resize', function() {
+        viewer.resize();
+      });
+
+      // Initial Load
+      updateActiveButtons("visualization", "#btn-ball-stick");
+      updateActiveButtons("supercell", "#btn-1x1x1");
+      updateActiveButtons("labels", "#btn-hide-labels");
+      updateActiveButtons("cell", "#btn-hide-cell");
+      regenerateAndRender();
+    });
   </script>
 </body>
 </html>
