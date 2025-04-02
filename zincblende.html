@@ -3,59 +3,43 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HgCdTe Crystal Structure Viewer</title>
+    <title>HgCdTe Zincblende Structure</title>
     <style>
-        body { font-family: sans-serif; }
-        #hgcdte_viewer {
-            height: 500px;
-            width: 100%;
-            max-width: 600px; /* Adjust as needed */
-            border: 1px solid lightgray;
-            position: relative;
-            margin: 20px auto; /* Center the viewer */
+        /* Basic styling for the viewer container */
+        #viewer-container {
+            height: 500px; /* Adjust height as needed */
+            width: 90%;   /* Use percentage for some responsiveness */
+            max-width: 600px; /* Maximum width */
+            border: 1px solid lightgray; /* See the container boundaries */
+            position: relative; /* Needed by 3Dmol.js */
+            margin: 20px auto; /* Center the container */
         }
     </style>
 </head>
 <body>
 
-<h1>HgCdTe Crystal Structure (Zincblende)</h1>
-<p>
-    Interactive 3D model of Mercury Cadmium Telluride (Hg<sub>1-x</sub>Cd<sub>x</sub>Te).
-    This visualization shows an ordered approximation for x=0.5 (Hg<sub>0.5</sub>Cd<sub>0.5</sub>Te)
-    within a single conventional unit cell. Te atoms form one FCC sublattice, while
-    Hg and Cd atoms share the sites of the interpenetrating FCC sublattice.
-    Rotate by dragging, zoom with the mouse wheel/pinch.
-</p>
+<h1>HgCdTe (Zincblende) Structure</h1>
 <p>Legend: Te (Yellow), Hg (Grey), Cd (Blue)</p>
 
-<!-- Container for the 3Dmol.js viewer -->
-<div id="hgcdte_viewer"></div>
+<!-- This div will hold the 3Dmol.js viewer -->
+<div id="viewer-container"></div>
 
-<!-- Include the 3Dmol.js library -->
-<!-- It's generally better to host the library yourself or use a reliable CDN -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.1.0/3Dmol-min.js" 
-        integrity="sha512-3/1Oc2OOYXWw7Wpe/twA/PO1/MXQZ7BrGkFF2NvlkvSj6kUo+p4p4/Ur87L8g3DRG+K8g5qL8zZ17I8d1+p31g==" 
+<!-- Include 3Dmol.js library from CDN -->
+<!-- IMPORTANT: Using the corrected integrity hash from the previous error discussion -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.1.0/3Dmol-min.js"
+        integrity="sha512-7+jpQprKBlgz3G5m9L70sa3b51rBx5VxBAvVLKfHgOfw3VmfmRp7zdfeBbuDBCwrS/mObsJxMT1yketh0gEkIw=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-<!-- JavaScript to create and configure the viewer -->
 <script>
-    // Wait for the DOM to be ready
+    // Wait for the page elements to load
     document.addEventListener("DOMContentLoaded", function() {
 
         // --- Configuration ---
-        // Approximate lattice constant 'a' for Hg0.5Cd0.5Te (Angstroms)
-        // Vegard's law approximation: a(HgTe) ~ 6.46 Å, a(CdTe) ~ 6.48 Å
-        const lattice_a = 6.47; 
-
-        // --- Atomic Coordinates (XYZ format string) ---
-        // Zincblende structure: 4 Te atoms, 4 Cation sites
-        // Here we place 2 Hg and 2 Cd in the cation sites for Hg0.5Cd0.5Te
-
-        // Total number of atoms
+        const lattice_a = 6.47; // Approx. lattice constant for Hg0.5Cd0.5Te (Angstroms)
         const numAtoms = 8;
 
-        // XYZ data: AtomSymbol X Y Z
-        // Coordinates are fractional * lattice_a
+        // --- Atomic Coordinates (XYZ format) ---
+        // Using an ordered approximation for Hg0.5Cd0.5Te in a Zincblende unit cell
         const xyzData = `${numAtoms}
 Hg0.5Cd0.5Te Unit Cell (Ordered Approximation, a=${lattice_a} A)
 Te ${0.0 * lattice_a} ${0.0 * lattice_a} ${0.0 * lattice_a}
@@ -69,48 +53,29 @@ Cd ${0.75 * lattice_a} ${0.75 * lattice_a} ${0.25 * lattice_a}
 `;
 
         // --- 3Dmol.js Viewer Setup ---
-        let viewerContainer = document.getElementById('hgcdte_viewer');
-        let config = { backgroundColor: 'white' };
-        let viewer = $3Dmol.createViewer(viewerContainer, config);
+        let viewerElement = document.getElementById('viewer-container');
+        let viewer = $3Dmol.createViewer(viewerElement, { backgroundColor: 'white' });
 
-        // Add the model data (XYZ format)
+        // Load the atomic data
         viewer.addModel(xyzData, 'xyz');
 
-        // Set styles
+        // Apply ball-and-stick style with specific colors
         viewer.setStyle({}, {
-            stick: { radius: 0.15, colorscheme: 'element' }, // Bonds
-            sphere: { scale: 0.3, colorscheme: 'element' }   // Atoms
+            stick: { radius: 0.15 },
+            sphere: { scale: 0.3 }
         });
-        
-        // Optionally, define specific colors for clarity
-         viewer.setStyle({elem:'Te'}, {sphere:{color:'yellow'}, stick:{color:'yellow'}});
-         viewer.setStyle({elem:'Hg'}, {sphere:{color:'grey'}, stick:{color:'grey'}});
-         viewer.setStyle({elem:'Cd'}, {sphere:{color:'blue'}, stick:{color:'blue'}});
-
+        viewer.setStyle({elem:'Te'}, {sphere:{color:'yellow'}, stick:{color:'yellow'}});
+        viewer.setStyle({elem:'Hg'}, {sphere:{color:'grey'},   stick:{color:'grey'}});
+        viewer.setStyle({elem:'Cd'}, {sphere:{color:'blue'},   stick:{color:'blue'}});
 
         // Add the unit cell outline
-        // 3Dmol can infer cell dimensions from atom coordinates if they neatly form a cell
-        // starting near the origin, or we can specify it.
-        viewer.addUnitCell(); 
-        // Alternative if addUnitCell() fails: Define manually
-        /*
-        viewer.addBox({
-            corner: {x:0, y:0, z:0},
-            dimensions: {w: lattice_a, h: lattice_a, d: lattice_a},
-            color: 'black',
-            dashed: false, // Set to true for dashed lines
-            linewidth: 1
-        });
-        */
+        viewer.addUnitCell();
 
-        // Zoom to fit the structure
+        // Zoom camera to fit the model
         viewer.zoomTo();
 
-        // Render the scene
+        // Draw the scene
         viewer.render();
-
-        // Optional: Add spinning
-        // viewer.spin(true);
 
     }); // End DOMContentLoaded
 </script>
