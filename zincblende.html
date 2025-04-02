@@ -3,212 +3,235 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HgCdTe Zincblende Structure</title>
+    <title>HgCdTe Zincblende Structure (Three.js)</title>
     <style>
-        body { margin: 0; overflow: hidden; }
+        body { margin: 0; overflow: hidden; background-color: #f0f0f0; } /* Added background to body */
         canvas { display: block; }
+        #info { /* Style for the info box */
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #000;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            font-size: 14px; /* Slightly smaller text */
+        }
+        #info h2 { margin-top: 0; margin-bottom: 10px; font-size: 16px; }
+        #info p { margin: 5px 0; }
+        #info ul { margin: 5px 0 5px 20px; padding: 0; }
+        #info li { margin-bottom: 3px; }
     </style>
 </head>
 <body>
-    <!-- Import Three.js from CDN - using a newer version with proper module support -->
-    <script async src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r133/three.min.js"></script>
-    <!-- Import OrbitControls - make sure to load after Three.js -->
-    <script async src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r133/examples/js/controls/OrbitControls.js"></script>
+    <!-- No initial content, will be added by script -->
+
+    <!-- Load Three.js FIRST -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r133/three.min.js"></script>
+    <!-- Load OrbitControls SECOND (depends on Three.js) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r133/examples/js/controls/OrbitControls.js"></script>
 
     <script>
-        // Wait for Three.js and OrbitControls to load
-        window.addEventListener('load', function() {
-            // Make sure Three.js is loaded
-            if (typeof THREE === 'undefined') {
-                console.error('Three.js failed to load');
-                document.body.innerHTML = '<div style="color: red; padding: 20px;">Error: Three.js failed to load</div>';
-                return;
-            }
-            
-            // Make sure OrbitControls is loaded
-            if (typeof THREE.OrbitControls === 'undefined') {
-                console.error('OrbitControls failed to load');
-                document.body.innerHTML = '<div style="color: red; padding: 20px;">Error: OrbitControls failed to load</div>';
-                return;
-            }
-            
-            // Initialize the scene
-            const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xf0f0f0);
+        // No need for window.load event listener now, as scripts load sequentially before this runs.
 
-            // Initialize the camera
-            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(5, 5, 5);
-            camera.lookAt(0, 0, 0);
+        // Check if libraries loaded correctly (optional but good practice)
+        if (typeof THREE === 'undefined') {
+            document.body.innerHTML = '<div style="color: red; padding: 20px;">Error: Three.js failed to load. Check script URL and network connection.</div>';
+            throw new Error("Three.js failed to load");
+        }
+        if (typeof THREE.OrbitControls === 'undefined') {
+            document.body.innerHTML = '<div style="color: red; padding: 20px;">Error: OrbitControls failed to load. Check script URL and network connection.</div>';
+            throw new Error("OrbitControls failed to load");
+        }
 
-            // Initialize the renderer
-            const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            document.body.appendChild(renderer.domElement);
+        // --- Three.js Scene Setup ---
 
-            // Add orbit controls - note the updated constructor
-            const controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.25;
+        // Initialize the scene
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf0f0f0); // Light grey background
 
-            // Add lighting
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-            scene.add(ambientLight);
+        // Initialize the camera
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000); // Slightly less wide FOV
+        camera.position.set(4, 4, 6); // Adjust starting position
+        camera.lookAt(0, 0, 0);
 
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(5, 10, 7.5);
-            scene.add(directionalLight);
+        // Initialize the renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
 
-            // Materials for atoms
-            const hgMaterial = new THREE.MeshStandardMaterial({
-                color: 0xc0c0c0,  // Silver color for Mercury
-                metalness: 0.7,
-                roughness: 0.3
-            });
+        // Add orbit controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; // Smooths camera movement
+        controls.dampingFactor = 0.1; // Adjust damping
+        controls.minDistance = 1; // Prevent zooming too close
+        controls.maxDistance = 50; // Prevent zooming too far
 
-            const cdMaterial = new THREE.MeshStandardMaterial({
-                color: 0x4682b4,  // Blue-ish for Cadmium
-                metalness: 0.6,
-                roughness: 0.4
-            });
+        // Add lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); // Slightly stronger ambient
+        scene.add(ambientLight);
 
-            const teMaterial = new THREE.MeshStandardMaterial({
-                color: 0xffa500,  // Orange for Tellurium
-                metalness: 0.2,
-                roughness: 0.5
-            });
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 10, 7.5); // Light source position
+        scene.add(directionalLight);
 
-            // Radii of atoms (scaled for visualization)
-            const hgRadius = 0.18;
-            const cdRadius = 0.16;
-            const teRadius = 0.14;
+        // --- Crystal Structure Logic ---
 
-            // Function to create a unit cell
-            function createUnitCell() {
-                const unitCell = new THREE.Group();
-                
-                // Lattice constant for HgCdTe (approximately 6.5 Å)
-                const a = 1.0; // Normalized to 1 for simplicity
-                
-                // Create the unit cell wireframe
-                const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(a, a, a));
-                const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
-                unitCell.add(line);
-                
-                // Function to add an atom
-                function addAtom(x, y, z, material, radius) {
-                    const geometry = new THREE.SphereGeometry(radius, 32, 32);
-                    const atom = new THREE.Mesh(geometry, material);
-                    atom.position.set(x, y, z);
-                    unitCell.add(atom);
-                }
-                
-                // Add atoms for zinc blende structure
-                // Group II atoms (Hg, Cd) at face-centered cubic positions
-                const groupIIPositions = [
-                    [0, 0, 0],     // Origin
-                    [0, 0.5, 0.5], // Face centers
-                    [0.5, 0, 0.5],
-                    [0.5, 0.5, 0]
-                ];
-                
-                // Group VI atoms (Te) at tetrahedral positions
-                const groupVIPositions = [
-                    [0.25, 0.25, 0.25],
-                    [0.75, 0.75, 0.25],
-                    [0.75, 0.25, 0.75],
-                    [0.25, 0.75, 0.75]
-                ];
-                
-                // Add Group II atoms (Hg, Cd)
-                // Randomly distribute Hg and Cd atoms based on composition
-                groupIIPositions.forEach(pos => {
-                    // Random choice between Hg and Cd (simulating the alloy nature)
-                    const useHg = Math.random() > 0.5;
-                    if (useHg) {
-                        addAtom(pos[0]*a, pos[1]*a, pos[2]*a, hgMaterial, hgRadius);
-                    } else {
-                        addAtom(pos[0]*a, pos[1]*a, pos[2]*a, cdMaterial, cdRadius);
-                    }
-                });
-                
-                // Add Group VI atoms (Te)
-                groupVIPositions.forEach(pos => {
-                    addAtom(pos[0]*a, pos[1]*a, pos[2]*a, teMaterial, teRadius);
-                });
-                
-                return unitCell;
-            }
-
-            // Create a 2x2x2 supercell
-            function createSupercell(nx, ny, nz) {
-                const supercell = new THREE.Group();
-                const a = 1.0; // Unit cell size
-                
-                for (let i = 0; i < nx; i++) {
-                    for (let j = 0; j < ny; j++) {
-                        for (let k = 0; k < nz; k++) {
-                            const unitCell = createUnitCell();
-                            unitCell.position.set(i*a, j*a, k*a);
-                            supercell.add(unitCell);
-                        }
-                    }
-                }
-                
-                // Center the supercell
-                supercell.position.set(-nx*a/2, -ny*a/2, -nz*a/2);
-                return supercell;
-            }
-
-            // Create a 2x2x2 supercell
-            const crystal = createSupercell(2, 2, 2);
-            scene.add(crystal);
-
-            // Resize handler
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            });
-
-            // Add UI elements
-            function addUI() {
-                const info = document.createElement('div');
-                info.style.position = 'absolute';
-                info.style.top = '10px';
-                info.style.left = '10px';
-                info.style.color = '#000';
-                info.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
-                info.style.padding = '10px';
-                info.style.borderRadius = '5px';
-                info.style.fontFamily = 'Arial, sans-serif';
-                info.innerHTML = `
-                    <h2>HgCdTe Zincblende Structure</h2>
-                    <p>Mercury Cadmium Telluride (HgCdTe) in zinc blende crystal structure</p>
-                    <p>Legend:</p>
-                    <ul>
-                        <li><span style="color: #c0c0c0;">■</span> Mercury (Hg)</li>
-                        <li><span style="color: #4682b4;">■</span> Cadmium (Cd)</li>
-                        <li><span style="color: #ffa500;">■</span> Tellurium (Te)</li>
-                    </ul>
-                    <p>Controls: Click and drag to rotate, scroll to zoom</p>
-                `;
-                document.body.appendChild(info);
-            }
-
-            // Initialize the scene
-            addUI();
-
-            // Animation loop
-            function animate() {
-                requestAnimationFrame(animate);
-                controls.update();
-                renderer.render(scene, camera);
-            }
-
-            animate();
+        // Materials for atoms (Using MeshStandardMaterial for better lighting)
+        const hgMaterial = new THREE.MeshStandardMaterial({
+            color: 0xAAAAAA, // Lighter grey for Mercury
+            metalness: 0.5, roughness: 0.5
         });
+        const cdMaterial = new THREE.MeshStandardMaterial({
+            color: 0x4682B4, // SteelBlue for Cadmium
+            metalness: 0.5, roughness: 0.5
+        });
+        const teMaterial = new THREE.MeshStandardMaterial({
+            color: 0xFFD700, // Gold for Tellurium (often used for Te/S)
+            metalness: 0.2, roughness: 0.6
+        });
+
+        // Visual radii of atoms (adjust for desired look)
+        const hgRadius = 0.18;
+        const cdRadius = 0.16;
+        const teRadius = 0.14;
+        const sphereDetail = 16; // Lower detail for performance
+
+        // Lattice constant (using 1.0 for relative positioning)
+        const lattice_a = 1.0;
+
+        // Geometry for atoms (create once, reuse)
+        const hgGeometry = new THREE.SphereGeometry(hgRadius, sphereDetail, sphereDetail);
+        const cdGeometry = new THREE.SphereGeometry(cdRadius, sphereDetail, sphereDetail);
+        const teGeometry = new THREE.SphereGeometry(teRadius, sphereDetail, sphereDetail);
+
+        // Function to create a single unit cell
+        function createUnitCell() {
+            const unitCellGroup = new THREE.Group();
+
+            // --- Define atom positions within the unit cell (fractional coordinates * lattice_a) ---
+            // Te positions (FCC base at origin + shifts)
+            const tePositions = [
+                [0.00, 0.00, 0.00], [0.00, 0.50, 0.50],
+                [0.50, 0.00, 0.50], [0.50, 0.50, 0.00]
+            ];
+
+            // Hg/Cd positions (shifted FCC base)
+            const cationPositions = [
+                [0.25, 0.25, 0.25], [0.25, 0.75, 0.75],
+                [0.75, 0.25, 0.75], [0.75, 0.75, 0.25]
+            ];
+
+            // --- Add Te atoms ---
+            tePositions.forEach(pos => {
+                const atom = new THREE.Mesh(teGeometry, teMaterial);
+                atom.position.set(pos[0] * lattice_a, pos[1] * lattice_a, pos[2] * lattice_a);
+                unitCellGroup.add(atom);
+            });
+
+            // --- Add Hg/Cd atoms (Randomly choose for alloy simulation) ---
+            cationPositions.forEach(pos => {
+                let atom;
+                if (Math.random() > 0.5) { // Approx 50% Hg, 50% Cd
+                    atom = new THREE.Mesh(hgGeometry, hgMaterial);
+                } else {
+                    atom = new THREE.Mesh(cdGeometry, cdMaterial);
+                }
+                atom.position.set(pos[0] * lattice_a, pos[1] * lattice_a, pos[2] * lattice_a);
+                unitCellGroup.add(atom);
+            });
+
+            // --- Optional: Add unit cell wireframe ---
+            // const boxGeom = new THREE.BoxGeometry(lattice_a, lattice_a, lattice_a);
+            // const edges = new THREE.EdgesGeometry(boxGeom);
+            // const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x333333, linewidth: 1 })); // Dark grey lines
+            // line.position.set(lattice_a / 2, lattice_a / 2, lattice_a / 2); // Center the box outline
+            // unitCellGroup.add(line);
+
+            return unitCellGroup;
+        }
+
+        // Function to create a supercell by replicating the unit cell
+        function createSupercell(nx, ny, nz) {
+            const supercellGroup = new THREE.Group();
+
+            for (let i = 0; i < nx; i++) {
+                for (let j = 0; j < ny; j++) {
+                    for (let k = 0; k < nz; k++) {
+                        const unitCell = createUnitCell();
+                        // Position the corner of the unit cell
+                        unitCell.position.set(i * lattice_a, j * lattice_a, k * lattice_a);
+                        supercellGroup.add(unitCell);
+                    }
+                }
+            }
+
+            // Center the entire supercell group visually
+            // Calculate the center offset based on the number of cells
+            const centerOffset = new THREE.Vector3(
+                (nx * lattice_a) / 2 - lattice_a / 2,
+                (ny * lattice_a) / 2 - lattice_a / 2,
+                (nz * lattice_a) / 2 - lattice_a / 2
+            );
+            // Apply the offset to all children (unit cells) to move the center to (0,0,0)
+            supercellGroup.children.forEach(child => {
+                child.position.sub(centerOffset);
+            });
+
+
+            // Add supercell bounding box (Optional)
+             const supercellBoxSize = new THREE.Vector3(nx * lattice_a, ny * lattice_a, nz * lattice_a);
+             const supercellBoxGeom = new THREE.BoxGeometry(supercellBoxSize.x, supercellBoxSize.y, supercellBoxSize.z);
+             const supercellEdges = new THREE.EdgesGeometry(supercellBoxGeom);
+             const supercellLine = new THREE.LineSegments(supercellEdges, new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 })); // Black outline
+             // No need to position the line - it's centered by default around the group's origin (0,0,0)
+             supercellGroup.add(supercellLine);
+
+
+            return supercellGroup;
+        }
+
+        // --- Create and Add the 2x2x2 Supercell ---
+        const crystal = createSupercell(2, 2, 2);
+        scene.add(crystal);
+
+        // --- UI Setup ---
+        function addUI() {
+            const infoDiv = document.createElement('div');
+            infoDiv.id = 'info'; // Use the ID defined in CSS
+            infoDiv.innerHTML = `
+                <h2>HgCdTe Zincblende (2x2x2)</h2>
+                <p>Random alloy simulation using Three.js</p>
+                <p>Legend:</p>
+                <ul>
+                    <li><span style="color: ${hgMaterial.color.getStyle()};">■</span> Mercury (Hg)</li>
+                    <li><span style="color: ${cdMaterial.color.getStyle()};">■</span> Cadmium (Cd)</li>
+                    <li><span style="color: ${teMaterial.color.getStyle()};">■</span> Tellurium (Te)</li>
+                </ul>
+                <p>Controls: Drag to rotate, Scroll to zoom</p>
+            `;
+            document.body.appendChild(infoDiv);
+        }
+        addUI(); // Add the info box to the page
+
+        // --- Handle Window Resizing ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --- Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate); // Request next frame
+            controls.update(); // Update controls (needed for damping)
+            renderer.render(scene, camera); // Render the scene
+        }
+
+        animate(); // Start the animation loop
+
     </script>
 </body>
 </html>
