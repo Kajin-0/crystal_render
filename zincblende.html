@@ -3,45 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HgCdTe Zincblende Structure (Three.js)</title>
+    <title>HgCdTe Ball-and-Stick (Three.js)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0f0f0; }
         canvas { display: block; }
         #info {
             position: absolute; top: 10px; left: 10px; color: #000;
-            background-color: rgba(255, 255, 255, 0.7); padding: 10px;
-            border-radius: 5px; font-family: Arial, sans-serif; font-size: 14px;
+            background-color: rgba(255, 255, 255, 0.8); /* Slightly more opaque */
+            padding: 10px; border-radius: 5px;
+            font-family: Arial, sans-serif; font-size: 14px;
+            max-width: 300px; /* Prevent info box from getting too wide */
         }
         #info h2 { margin-top: 0; margin-bottom: 10px; font-size: 16px; }
         #info p { margin: 5px 0; }
         #info ul { margin: 5px 0 5px 20px; padding: 0; }
         #info li { margin-bottom: 3px; }
+        .color-box { /* Style for the color squares in legend */
+            display: inline-block; width: 12px; height: 12px;
+            margin-right: 5px; border: 1px solid #555;
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>
-    <!-- Load Three.js Core (from cdnjs is fine) -->
+    <!-- Load Three.js Core -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r133/three.min.js"></script>
-
-    <!-- Load OrbitControls from JSDelivr (reliable path for examples) -->
+    <!-- Load OrbitControls from JSDelivr -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.133.0/examples/js/controls/OrbitControls.js"></script>
 
     <script>
         // Check if libraries loaded correctly
         if (typeof THREE === 'undefined') {
-            document.body.innerHTML = '<div style="color: red; padding: 20px;">Error: Three.js failed to load. Check script URL and network connection.</div>';
+            document.body.innerHTML = '<div style="color: red; padding: 20px;">Error: Three.js failed to load.</div>';
             throw new Error("Three.js failed to load");
         }
-        // *** This check should now pass ***
         if (typeof THREE.OrbitControls === 'undefined') {
-            document.body.innerHTML = '<div style="color: red; padding: 20px;">Error: OrbitControls failed to load. Check script URL (using JSDelivr now) and network connection.</div>';
-            throw new Error("OrbitControls failed to load"); // Line 45 where the error was reported
+            document.body.innerHTML = '<div style="color: red; padding: 20px;">Error: OrbitControls failed to load.</div>';
+            throw new Error("OrbitControls failed to load");
         }
 
-        // --- Three.js Scene Setup ---
+        // --- Scene, Camera, Renderer, Controls, Lighting Setup (Similar to before) ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf0f0f0);
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(4, 4, 6);
+        camera.position.set(5, 5, 8); // Slightly further back view
         camera.lookAt(0, 0, 0);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -52,80 +57,158 @@
         controls.dampingFactor = 0.1;
         controls.minDistance = 1;
         controls.maxDistance = 50;
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); // Brighter ambient
         scene.add(ambientLight);
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9); // Brighter directional
         directionalLight.position.set(5, 10, 7.5);
         scene.add(directionalLight);
 
-        // --- Crystal Structure Logic ---
+        // --- Crystal Data and Materials ---
+        const lattice_a = 3.0; // Adjusted lattice constant for visual spacing
+                               // Not physical units here, just relative spacing
+
+        // Visual appearance settings
+        const sphereScale = 0.18; // Smaller spheres for ball-and-stick
+        const stickRadius = 0.05; // Radius of the cylinder bonds
+        const sphereDetail = 12;  // Lower detail for potentially many spheres/sticks
+        const stickDetail = 6;    // Lower detail for cylinders
+
+        // Materials
         const hgMaterial = new THREE.MeshStandardMaterial({ color: 0xAAAAAA, metalness: 0.5, roughness: 0.5 });
         const cdMaterial = new THREE.MeshStandardMaterial({ color: 0x4682B4, metalness: 0.5, roughness: 0.5 });
         const teMaterial = new THREE.MeshStandardMaterial({ color: 0xFFD700, metalness: 0.2, roughness: 0.6 });
-        const hgRadius = 0.18;
-        const cdRadius = 0.16;
-        const teRadius = 0.14;
-        const sphereDetail = 16;
-        const lattice_a = 1.0;
-        const hgGeometry = new THREE.SphereGeometry(hgRadius, sphereDetail, sphereDetail);
-        const cdGeometry = new THREE.SphereGeometry(cdRadius, sphereDetail, sphereDetail);
-        const teGeometry = new THREE.SphereGeometry(teRadius, sphereDetail, sphereDetail);
+        const bondMaterial = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.1, roughness: 0.8 }); // Grey bonds
 
-        function createUnitCell() {
-            const unitCellGroup = new THREE.Group();
-            const tePositions = [ [0.00, 0.00, 0.00], [0.00, 0.50, 0.50], [0.50, 0.00, 0.50], [0.50, 0.50, 0.00] ];
-            const cationPositions = [ [0.25, 0.25, 0.25], [0.25, 0.75, 0.75], [0.75, 0.25, 0.75], [0.75, 0.75, 0.25] ];
-            tePositions.forEach(pos => {
-                const atom = new THREE.Mesh(teGeometry, teMaterial);
-                atom.position.set(pos[0] * lattice_a, pos[1] * lattice_a, pos[2] * lattice_a);
-                unitCellGroup.add(atom);
-            });
-            cationPositions.forEach(pos => {
-                let atom;
-                if (Math.random() > 0.5) { atom = new THREE.Mesh(hgGeometry, hgMaterial); }
-                else { atom = new THREE.Mesh(cdGeometry, cdMaterial); }
-                atom.position.set(pos[0] * lattice_a, pos[1] * lattice_a, pos[2] * lattice_a);
-                unitCellGroup.add(atom);
-            });
-            return unitCellGroup;
-        }
+        // Atom Radii (Used for scaling sphere geometry)
+        const atomRadii = {
+            'Hg': 1.5 * sphereScale,
+            'Cd': 1.4 * sphereScale,
+            'Te': 1.3 * sphereScale
+        };
 
-        function createSupercell(nx, ny, nz) {
-            const supercellGroup = new THREE.Group();
+        // Reusable Geometries
+        const sphereGeometries = {
+            'Hg': new THREE.SphereGeometry(atomRadii['Hg'], sphereDetail, sphereDetail),
+            'Cd': new THREE.SphereGeometry(atomRadii['Cd'], sphereDetail, sphereDetail),
+            'Te': new THREE.SphereGeometry(atomRadii['Te'], sphereDetail, sphereDetail)
+        };
+        const stickGeometry = new THREE.CylinderGeometry(stickRadius, stickRadius, 1, stickDetail, 1); // Length=1, will be scaled
+
+        // --- Generate Atom Positions for 2x2x2 Supercell ---
+        function generateCrystalData(nx, ny, nz) {
+            const atoms = [];
+            const supercellCenter = new THREE.Vector3(
+                (nx * lattice_a) / 2 - lattice_a / 2,
+                (ny * lattice_a) / 2 - lattice_a / 2,
+                (nz * lattice_a) / 2 - lattice_a / 2
+            );
+
+            // Base positions within a unit cell (fractional)
+            const baseTe = [ [0.00, 0.00, 0.00], [0.00, 0.50, 0.50], [0.50, 0.00, 0.50], [0.50, 0.50, 0.00] ];
+            const baseCations = [ [0.25, 0.25, 0.25], [0.25, 0.75, 0.75], [0.75, 0.25, 0.75], [0.75, 0.75, 0.25] ];
+
             for (let i = 0; i < nx; i++) {
                 for (let j = 0; j < ny; j++) {
                     for (let k = 0; k < nz; k++) {
-                        const unitCell = createUnitCell();
-                        unitCell.position.set(i * lattice_a, j * lattice_a, k * lattice_a);
-                        supercellGroup.add(unitCell);
+                        const cellOffset = new THREE.Vector3(i * lattice_a, j * lattice_a, k * lattice_a);
+
+                        // Add Te atoms for this cell
+                        baseTe.forEach(pos => {
+                            const atomPos = new THREE.Vector3(pos[0] * lattice_a, pos[1] * lattice_a, pos[2] * lattice_a)
+                                .add(cellOffset)
+                                .sub(supercellCenter); // Center atom position
+                            atoms.push({ element: 'Te', position: atomPos });
+                        });
+
+                        // Add Hg/Cd atoms for this cell
+                        baseCations.forEach(pos => {
+                            const element = Math.random() > 0.5 ? 'Hg' : 'Cd';
+                            const atomPos = new THREE.Vector3(pos[0] * lattice_a, pos[1] * lattice_a, pos[2] * lattice_a)
+                                .add(cellOffset)
+                                .sub(supercellCenter); // Center atom position
+                            atoms.push({ element: element, position: atomPos });
+                        });
                     }
                 }
             }
-            const centerOffset = new THREE.Vector3( (nx * lattice_a) / 2 - lattice_a / 2, (ny * lattice_a) / 2 - lattice_a / 2, (nz * lattice_a) / 2 - lattice_a / 2 );
-            supercellGroup.children.forEach(child => { child.position.sub(centerOffset); });
-            const supercellBoxSize = new THREE.Vector3(nx * lattice_a, ny * lattice_a, nz * lattice_a);
-            const supercellBoxGeom = new THREE.BoxGeometry(supercellBoxSize.x, supercellBoxSize.y, supercellBoxSize.z);
-            const supercellEdges = new THREE.EdgesGeometry(supercellBoxGeom);
-            const supercellLine = new THREE.LineSegments(supercellEdges, new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 }));
-            supercellGroup.add(supercellLine);
-            return supercellGroup;
+            return atoms;
         }
 
-        const crystal = createSupercell(2, 2, 2);
-        scene.add(crystal);
+        // --- Create Ball and Stick Meshes ---
+        function createBallAndStickModel(atomData) {
+            const group = new THREE.Group();
+            const materials = { 'Hg': hgMaterial, 'Cd': cdMaterial, 'Te': teMaterial };
+
+            // Add Spheres (Balls)
+            atomData.forEach(atom => {
+                const sphere = new THREE.Mesh(sphereGeometries[atom.element], materials[atom.element]);
+                sphere.position.copy(atom.position);
+                group.add(sphere);
+            });
+
+            // Add Sticks (Bonds)
+            const bondCutoff = lattice_a * 0.5; // Approximate bonding distance (adjust if needed)
+                                                // sqrt(3)/4 * lattice_a is ideal ZnS bond length factor
+            const bondCutoffSq = bondCutoff * bondCutoff; // Use squared distance for efficiency
+
+            // Helper vector for quaternion calculation
+            const yAxis = new THREE.Vector3(0, 1, 0);
+
+            for (let i = 0; i < atomData.length; i++) {
+                for (let j = i + 1; j < atomData.length; j++) { // Avoid duplicate checks (j > i)
+                    const atom1 = atomData[i];
+                    const atom2 = atomData[j];
+
+                    const distSq = atom1.position.distanceToSquared(atom2.position);
+
+                    // Check if distance is within bonding range
+                    if (distSq < bondCutoffSq) {
+                         // Ensure bonding only between Cation (Hg/Cd) and Anion (Te)
+                         const isCation1 = (atom1.element === 'Hg' || atom1.element === 'Cd');
+                         const isCation2 = (atom2.element === 'Hg' || atom2.element === 'Cd');
+                         if (isCation1 === isCation2) continue; // Skip Te-Te or Cation-Cation bonds
+
+                        const distance = Math.sqrt(distSq);
+
+                        // Create stick mesh (clone geometry, reuse material)
+                        const stick = new THREE.Mesh(stickGeometry, bondMaterial);
+
+                        // Position stick at midpoint
+                        stick.position.copy(atom1.position).add(atom2.position).multiplyScalar(0.5);
+
+                        // Orient stick
+                        const direction = new THREE.Vector3().subVectors(atom2.position, atom1.position).normalize();
+                        const quaternion = new THREE.Quaternion().setFromUnitVectors(yAxis, direction);
+                        stick.quaternion.copy(quaternion);
+
+                        // Scale stick to correct length
+                        stick.scale.y = distance; // Scale along the cylinder's height axis
+
+                        group.add(stick);
+                    }
+                }
+            }
+            return group;
+        }
+
+        // --- Generate Data and Create Model ---
+        const atomData = generateCrystalData(2, 2, 2); // Generate data for 2x2x2
+        const crystalModel = createBallAndStickModel(atomData);
+        scene.add(crystalModel);
 
         // --- UI Setup ---
         function addUI() {
             const infoDiv = document.createElement('div');
             infoDiv.id = 'info';
             infoDiv.innerHTML = `
-                <h2>HgCdTe Zincblende (2x2x2)</h2>
+                <h2>HgCdTe Ball-and-Stick (2x2x2)</h2>
                 <p>Random alloy simulation using Three.js</p>
                 <p>Legend:</p>
                 <ul>
-                    <li><span style="color: ${hgMaterial.color.getStyle()};">■</span> Mercury (Hg)</li>
-                    <li><span style="color: ${cdMaterial.color.getStyle()};">■</span> Cadmium (Cd)</li>
-                    <li><span style="color: ${teMaterial.color.getStyle()};">■</span> Tellurium (Te)</li>
+                    <li><span class="color-box" style="background-color: ${hgMaterial.color.getStyle()};"></span> Mercury (Hg)</li>
+                    <li><span class="color-box" style="background-color: ${cdMaterial.color.getStyle()};"></span> Cadmium (Cd)</li>
+                    <li><span class="color-box" style="background-color: ${teMaterial.color.getStyle()};"></span> Tellurium (Te)</li>
+                    <li><span class="color-box" style="background-color: ${bondMaterial.color.getStyle()};"></span> Bonds</li>
                 </ul>
                 <p>Controls: Drag to rotate, Scroll to zoom</p>
             `;
