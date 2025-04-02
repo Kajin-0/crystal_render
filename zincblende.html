@@ -3,28 +3,29 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HgCdTe Zincblende Structure (2x2x2 Supercell)</title>
+    <title>Generic Zincblende Structure (2x2x2 Supercell)</title>
     <style>
         /* Basic styling for the viewer container */
         #viewer-container {
-            height: 600px;
+            height: 600px; /* Good height for visibility */
             width: 95%;
             max-width: 700px;
             border: 1px solid lightgray;
-            position: relative;
-            margin: 20px auto;
+            position: relative; /* Required by 3Dmol.js */
+            margin: 20px auto; /* Center the viewer */
         }
     </style>
 </head>
 <body>
 
-<h1>HgCdTe (Zincblende) Structure - 2x2x2 Supercell</h1>
-<p>Ball-and-stick model. Legend: Te (Yellow), Hg (Grey), Cd (Blue)</p>
+<h1>Generic Zincblende Structure - 2x2x2 Supercell</h1>
+<p>Ball-and-stick model. Legend: Atom A (Blue), Atom B (Yellow)</p>
 
 <!-- This div will hold the 3Dmol.js viewer -->
 <div id="viewer-container"></div>
 
 <!-- Include 3Dmol.js library from CDN -->
+<!-- Using the known working integrity hash for v2.1.0 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.1.0/3Dmol-min.js"
         integrity="sha512-7+jpQprKBlgz3G5m9L70sa3b51rBx5VxBAvVLKfHgOfw3VmfmRp7zdfeBbuDBCwrS/mObsJxMT1yketh0gEkIw=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -33,63 +34,82 @@
     document.addEventListener("DOMContentLoaded", function() {
 
         // --- Configuration ---
-        const lattice_a = 6.47; // Angstroms
-        const supercell_dim = 2;
+        // Using a typical Zincblende lattice constant (e.g., ZnS ~5.41 Angstroms)
+        const lattice_a = 5.41;
+        const supercell_dim = 2; // For 2x2x2 supercell
 
         // --- Base Unit Cell Atoms (Fractional Coordinates) ---
+        // Define the 8 atoms within ONE unit cell using generic A and B
+        // We'll map A -> Zn and B -> S later in the styling
         const baseAtoms = [
-            { element: 'Te', fx: 0.00, fy: 0.00, fz: 0.00 },
-            { element: 'Te', fx: 0.00, fy: 0.50, fz: 0.50 },
-            { element: 'Te', fx: 0.50, fy: 0.00, fz: 0.50 },
-            { element: 'Te', fx: 0.50, fy: 0.50, fz: 0.00 },
-            { element: 'Hg', fx: 0.25, fy: 0.25, fz: 0.25 },
-            { element: 'Cd', fx: 0.25, fy: 0.75, fz: 0.75 },
-            { element: 'Hg', fx: 0.75, fy: 0.25, fz: 0.75 },
-            { element: 'Cd', fx: 0.75, fy: 0.75, fz: 0.25 }
+            // Atom Type 'B' (Anion positions) - Will be Yellow (like Sulfur)
+            { element: 'S', fx: 0.00, fy: 0.00, fz: 0.00 }, // Changed element symbol directly
+            { element: 'S', fx: 0.00, fy: 0.50, fz: 0.50 },
+            { element: 'S', fx: 0.50, fy: 0.00, fz: 0.50 },
+            { element: 'S', fx: 0.50, fy: 0.50, fz: 0.00 },
+            // Atom Type 'A' (Cation positions) - Will be Blue (like Zinc)
+            { element: 'Zn', fx: 0.25, fy: 0.25, fz: 0.25 }, // Changed element symbol directly
+            { element: 'Zn', fx: 0.25, fy: 0.75, fz: 0.75 },
+            { element: 'Zn', fx: 0.75, fy: 0.25, fz: 0.75 },
+            { element: 'Zn', fx: 0.75, fy: 0.75, fz: 0.25 }
         ];
 
         // --- Generate Supercell Coordinates (XYZ format string) ---
         let xyzBuilder = [];
         let totalAtoms = 0;
+
+        // Loop through the supercell dimensions (nx, ny, nz from 0 to 1)
         for (let nx = 0; nx < supercell_dim; nx++) {
             for (let ny = 0; ny < supercell_dim; ny++) {
                 for (let nz = 0; nz < supercell_dim; nz++) {
+                    // Add each atom from the base cell, shifted by the cell indices
                     baseAtoms.forEach(atom => {
                         let x = (atom.fx + nx) * lattice_a;
                         let y = (atom.fy + ny) * lattice_a;
                         let z = (atom.fz + nz) * lattice_a;
+                        // Add line to builder: ElementSymbol X Y Z
                         xyzBuilder.push(`${atom.element} ${x.toFixed(4)} ${y.toFixed(4)} ${z.toFixed(4)}`);
                         totalAtoms++;
                     });
                 }
             }
         }
-        const xyzData = `${totalAtoms}\nHg0.5Cd0.5Te ${supercell_dim}x${supercell_dim}x${supercell_dim} Supercell (a=${lattice_a} A)\n` + xyzBuilder.join('\n');
+
+        // Combine into final XYZ data string
+        // Header: total number of atoms \n comment line \n ...atom lines...
+        const xyzData = `${totalAtoms}\nGeneric ZnS-like ${supercell_dim}x${supercell_dim}x${supercell_dim} Supercell (a=${lattice_a} A)\n` + xyzBuilder.join('\n');
 
         // --- 3Dmol.js Viewer Setup ---
         let viewerElement = document.getElementById('viewer-container');
         let viewer = $3Dmol.createViewer(viewerElement, { backgroundColor: 'white' });
 
-        // Load the atomic data
-        let model = viewer.addModel(xyzData, 'xyz');
+        // Load the atomic data from the generated XYZ string
+        viewer.addModel(xyzData, 'xyz');
 
-        // ** Crucial part for Ball-and-Stick **
-        // Apply styles: Make spheres smaller and sticks reasonably thick
-        // 3Dmol automatically computes bonds based on distances when both styles are present.
+        // *** Apply Ball-and-Stick Style ***
+        // This single call defines both sphere and stick properties.
+        // 3Dmol.js will calculate bonds based on proximity.
         viewer.setStyle({}, {
-            stick: { radius: 0.15, colorscheme: 'element' }, // Adjust radius as needed
-            sphere: { scale: 0.25, colorscheme: 'element' }   // Reduced scale for spheres
+            stick: {
+                radius: 0.15, // Thickness of the sticks (bonds)
+                colorscheme: 'element' // Use element default colors initially
+            },
+            sphere: {
+                scale: 0.25,  // Size of the spheres (atoms), relative to VdW radius
+                              // Keep scale < 0.5 to ensure sticks are visible
+                colorscheme: 'element' // Use element default colors initially
+            }
         });
 
-        // Override default element colors for clarity
-        viewer.setStyle({elem:'Te'}, {sphere:{color:'yellow'}, stick:{color:'yellow'}});
-        viewer.setStyle({elem:'Hg'}, {sphere:{color:'grey'},   stick:{color:'grey'}});
-        viewer.setStyle({elem:'Cd'}, {sphere:{color:'blue'},   stick:{color:'blue'}});
+        // --- Apply Specific Colors (Overrides colorscheme for these elements) ---
+        // Use the actual element symbols defined in baseAtoms ('Zn', 'S')
+        viewer.setStyle({ elem: 'Zn' }, { sphere: { color: 'blue' }, stick: { color: 'blue' } }); // Atom A = Zn = Blue
+        viewer.setStyle({ elem: 'S' }, { sphere: { color: 'yellow' }, stick: { color: 'yellow' } }); // Atom B = S = Yellow
 
-        // Zoom camera to fit the model
+        // Adjust camera to view the whole model
         viewer.zoomTo();
 
-        // Draw the scene
+        // Render the scene
         viewer.render();
 
         // Optional: Spin the model
