@@ -3,107 +3,172 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HgCdTe Ball-and-Stick (Three.js)</title>
+    <title>HgCdTe Interactive Model (Three.js)</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #f0f0f0; }
+        body { margin: 0; overflow: hidden; background-color: #dde; font-family: sans-serif; }
         canvas { display: block; }
-        #info {
-            position: absolute; top: 10px; left: 10px; color: #000;
-            background-color: rgba(255, 255, 255, 0.8); /* Slightly more opaque */
-            padding: 10px; border-radius: 5px;
-            font-family: Arial, sans-serif; font-size: 14px;
-            max-width: 300px; /* Prevent info box from getting too wide */
+        #controls-container {
+            position: absolute; top: 10px; left: 10px; color: #111;
+            background-color: rgba(255, 255, 255, 0.85); padding: 15px;
+            border-radius: 8px; box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            font-size: 14px; max-width: 300px;
         }
-        #info h2 { margin-top: 0; margin-bottom: 10px; font-size: 16px; }
-        #info p { margin: 5px 0; }
-        #info ul { margin: 5px 0 5px 20px; padding: 0; }
-        #info li { margin-bottom: 3px; }
-        .color-box { /* Style for the color squares in legend */
+        #controls-container h2 { margin-top: 0; margin-bottom: 10px; font-size: 16px; }
+        #controls-container p { margin: 8px 0; }
+        #controls-container ul { margin: 5px 0 5px 20px; padding: 0; list-style: none; }
+        #controls-container li { margin-bottom: 4px; }
+        .color-box {
             display: inline-block; width: 12px; height: 12px;
-            margin-right: 5px; border: 1px solid #555;
+            margin-right: 6px; border: 1px solid #555;
             vertical-align: middle;
         }
+        label { display: block; margin: 8px 0 4px 0; }
+        input[type="range"] { width: 100%; }
+        button {
+             padding: 6px 12px; margin-top: 10px; cursor: pointer;
+             border: 1px solid #aaa; border-radius: 4px; background-color: #eee;
+        }
+        button:hover { background-color: #ddd; }
     </style>
 </head>
 <body>
+    <!-- Container for UI Controls -->
+    <div id="controls-container">
+        <h2>Hg<sub>1-x</sub>Cd<sub>x</sub>Te Model</h2>
+        <p>Interactive 2x2x2 supercell.</p>
+
+        <!-- Concentration Slider -->
+        <label for="cdSlider">Cd Concentration (x): <span id="cdValue">0.50</span></label>
+        <input type="range" id="cdSlider" min="0" max="1" step="0.01" value="0.5">
+
+        <!-- Spin Button -->
+        <button id="spinButton">Start Spin</button>
+        <!-- Label Toggle Button -->
+        <button id="labelToggleButton">Toggle Labels</button>
+
+
+        <p>Legend:</p>
+        <ul>
+            <li><span class="color-box" id="hgColorBox"></span> Mercury (Hg)</li>
+            <li><span class="color-box" id="cdColorBox"></span> Cadmium (Cd)</li>
+            <li><span class="color-box" id="teColorBox"></span> Tellurium (Te)</li>
+            <li><span class="color-box" id="bondColorBox"></span> Bonds</li>
+        </ul>
+        <p style="font-size: 12px; margin-top: 15px;">Drag to rotate, Scroll to zoom.</p>
+    </div>
+
     <!-- Load Three.js Core -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r133/three.min.js"></script>
     <!-- Load OrbitControls from JSDelivr -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.133.0/examples/js/controls/OrbitControls.js"></script>
 
     <script>
-        // Check if libraries loaded correctly
-        if (typeof THREE === 'undefined') {
-            document.body.innerHTML = '<div style="color: red; padding: 20px;">Error: Three.js failed to load.</div>';
-            throw new Error("Three.js failed to load");
-        }
-        if (typeof THREE.OrbitControls === 'undefined') {
-            document.body.innerHTML = '<div style="color: red; padding: 20px;">Error: OrbitControls failed to load.</div>';
-            throw new Error("OrbitControls failed to load");
-        }
+        // --- Essential Checks ---
+        if (typeof THREE === 'undefined') throw new Error("Three.js failed to load");
+        if (typeof THREE.OrbitControls === 'undefined') throw new Error("OrbitControls failed to load");
 
-        // --- Scene, Camera, Renderer, Controls, Lighting Setup (Similar to before) ---
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xf0f0f0);
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(5, 5, 8); // Slightly further back view
-        camera.lookAt(0, 0, 0);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        document.body.appendChild(renderer.domElement);
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.1;
-        controls.minDistance = 1;
-        controls.maxDistance = 50;
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); // Brighter ambient
-        scene.add(ambientLight);
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9); // Brighter directional
-        directionalLight.position.set(5, 10, 7.5);
-        scene.add(directionalLight);
+        // --- Global Variables & State ---
+        let scene, camera, renderer, controls;
+        let crystalModelGroup = new THREE.Group(); // Holds atoms, bonds, labels
+        let unitCellOutline = null;
+        let isSpinning = false;
+        let showLabels = true;
+        let cdConcentration = 0.5; // Default Cd concentration (x)
+        const supercellDims = { nx: 2, ny: 2, nz: 2 };
+        const spinSpeed = 0.005;
 
-        // --- Crystal Data and Materials ---
-        const lattice_a = 3.0; // Adjusted lattice constant for visual spacing
-                               // Not physical units here, just relative spacing
+        // --- Constants & Configuration ---
+        const lattice_a = 3.0; // Visual spacing constant
+        const sphereScale = 0.18;
+        const stickRadius = 0.05;
+        const labelOffset = 0.3; // How far above atom to place label
+        const labelFontSize = 40; // Font size on texture canvas
+        const labelScale = 0.5;   // Scale of the sprite label in the scene
+        const sphereDetail = 12;
+        const stickDetail = 6;
+        const bondCutoffFactor = 0.5; // Multiplier for lattice_a to determine bond cutoff
 
-        // Visual appearance settings
-        const sphereScale = 0.18; // Smaller spheres for ball-and-stick
-        const stickRadius = 0.05; // Radius of the cylinder bonds
-        const sphereDetail = 12;  // Lower detail for potentially many spheres/sticks
-        const stickDetail = 6;    // Lower detail for cylinders
-
-        // Materials
+        // --- Materials (Defined globally for access by legend) ---
         const hgMaterial = new THREE.MeshStandardMaterial({ color: 0xAAAAAA, metalness: 0.5, roughness: 0.5 });
         const cdMaterial = new THREE.MeshStandardMaterial({ color: 0x4682B4, metalness: 0.5, roughness: 0.5 });
         const teMaterial = new THREE.MeshStandardMaterial({ color: 0xFFD700, metalness: 0.2, roughness: 0.6 });
-        const bondMaterial = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.1, roughness: 0.8 }); // Grey bonds
+        const bondMaterial = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.1, roughness: 0.8 });
+        const unitCellMaterial = new THREE.LineDashedMaterial({ color: 0x0000ff, dashSize: 0.05 * lattice_a, gapSize: 0.03 * lattice_a, linewidth: 1 });
 
-        // Atom Radii (Used for scaling sphere geometry)
+        // --- Atom Radii (Used for sphere scaling) ---
         const atomRadii = {
-            'Hg': 1.5 * sphereScale,
-            'Cd': 1.4 * sphereScale,
-            'Te': 1.3 * sphereScale
+            'Hg': 1.5 * sphereScale, 'Cd': 1.4 * sphereScale, 'Te': 1.3 * sphereScale
         };
 
-        // Reusable Geometries
+        // --- Reusable Geometries ---
         const sphereGeometries = {
             'Hg': new THREE.SphereGeometry(atomRadii['Hg'], sphereDetail, sphereDetail),
             'Cd': new THREE.SphereGeometry(atomRadii['Cd'], sphereDetail, sphereDetail),
             'Te': new THREE.SphereGeometry(atomRadii['Te'], sphereDetail, sphereDetail)
         };
-        const stickGeometry = new THREE.CylinderGeometry(stickRadius, stickRadius, 1, stickDetail, 1); // Length=1, will be scaled
+        const stickGeometry = new THREE.CylinderGeometry(stickRadius, stickRadius, 1, stickDetail, 1); // Base length 1
+        const unitCellBoxGeometry = new THREE.BoxGeometry(lattice_a, lattice_a, lattice_a);
+        const unitCellEdgesGeometry = new THREE.EdgesGeometry(unitCellBoxGeometry);
 
-        // --- Generate Atom Positions for 2x2x2 Supercell ---
-        function generateCrystalData(nx, ny, nz) {
+
+        // --- Initialization Function ---
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xddeeff); // Light blue background
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(lattice_a * 1.5, lattice_a * 1.5, lattice_a * 2.5); // Adjust based on lattice_a
+            camera.lookAt(0, 0, 0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.body.appendChild(renderer.domElement);
+
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.1;
+            controls.minDistance = lattice_a * 0.5;
+            controls.maxDistance = lattice_a * 10;
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            directionalLight.position.set(5, 10, 7.5);
+            scene.add(directionalLight);
+
+            // Add the main group to hold the crystal model
+            scene.add(crystalModelGroup);
+
+            // Initial Model Creation
+            updateCrystalModel();
+            createUnitCellOutline(); // Create the outline once
+
+            // Setup UI Listeners
+            setupUI();
+
+            // Start Animation Loop
+            animate();
+
+            // Handle Window Resizing
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        // --- Generate Atom Positions ---
+        function generateCrystalData(nx, ny, nz, currentCdConcentration) {
             const atoms = [];
+            // Calculate the offset needed to center the supercell *before* applying it
             const supercellCenter = new THREE.Vector3(
                 (nx * lattice_a) / 2 - lattice_a / 2,
                 (ny * lattice_a) / 2 - lattice_a / 2,
                 (nz * lattice_a) / 2 - lattice_a / 2
             );
 
-            // Base positions within a unit cell (fractional)
             const baseTe = [ [0.00, 0.00, 0.00], [0.00, 0.50, 0.50], [0.50, 0.00, 0.50], [0.50, 0.50, 0.00] ];
             const baseCations = [ [0.25, 0.25, 0.25], [0.25, 0.75, 0.75], [0.75, 0.25, 0.75], [0.75, 0.75, 0.25] ];
 
@@ -111,22 +176,15 @@
                 for (let j = 0; j < ny; j++) {
                     for (let k = 0; k < nz; k++) {
                         const cellOffset = new THREE.Vector3(i * lattice_a, j * lattice_a, k * lattice_a);
-
-                        // Add Te atoms for this cell
                         baseTe.forEach(pos => {
-                            const atomPos = new THREE.Vector3(pos[0] * lattice_a, pos[1] * lattice_a, pos[2] * lattice_a)
-                                .add(cellOffset)
-                                .sub(supercellCenter); // Center atom position
-                            atoms.push({ element: 'Te', position: atomPos });
+                            const atomPos = new THREE.Vector3(pos[0] * lattice_a, pos[1] * lattice_a, pos[2] * lattice_a).add(cellOffset);
+                            atoms.push({ element: 'Te', position: atomPos.clone().sub(supercellCenter) }); // Center position
                         });
-
-                        // Add Hg/Cd atoms for this cell
                         baseCations.forEach(pos => {
-                            const element = Math.random() > 0.5 ? 'Hg' : 'Cd';
-                            const atomPos = new THREE.Vector3(pos[0] * lattice_a, pos[1] * lattice_a, pos[2] * lattice_a)
-                                .add(cellOffset)
-                                .sub(supercellCenter); // Center atom position
-                            atoms.push({ element: element, position: atomPos });
+                            // Use concentration to decide element
+                            const element = Math.random() < currentCdConcentration ? 'Cd' : 'Hg';
+                            const atomPos = new THREE.Vector3(pos[0] * lattice_a, pos[1] * lattice_a, pos[2] * lattice_a).add(cellOffset);
+                            atoms.push({ element: element, position: atomPos.clone().sub(supercellCenter) }); // Center position
                         });
                     }
                 }
@@ -134,102 +192,182 @@
             return atoms;
         }
 
-        // --- Create Ball and Stick Meshes ---
-        function createBallAndStickModel(atomData) {
-            const group = new THREE.Group();
-            const materials = { 'Hg': hgMaterial, 'Cd': cdMaterial, 'Te': teMaterial };
+        // --- Create Text Label Sprite ---
+        function createLabelSprite(text, textColor = 'black', fontSize = 40) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            context.font = `Bold ${fontSize}px Arial`;
 
-            // Add Spheres (Balls)
+            // Measure text
+            const metrics = context.measureText(text);
+            const textWidth = metrics.width;
+            const textHeight = fontSize * 1.2; // Estimate height
+
+            canvas.width = textWidth + fontSize * 0.2; // Add padding
+            canvas.height = textHeight;
+
+            // Redraw text on resized canvas (important!)
+            context.font = `Bold ${fontSize}px Arial`;
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillStyle = textColor;
+            // context.fillStyle = 'rgba(255, 255, 255, 0.7)'; // Optional background
+            // context.fillRect(0, 0, canvas.width, canvas.height);
+            // context.fillStyle = textColor;
+            context.fillText(text, canvas.width / 2, canvas.height / 2);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.needsUpdate = true;
+
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture, depthTest: false }); // depthTest: false = always visible
+            const sprite = new THREE.Sprite(spriteMaterial);
+
+            // Scale the sprite
+            sprite.scale.set(labelScale * (canvas.width/canvas.height), labelScale, 1); // Adjust aspect ratio
+
+            return sprite;
+        }
+
+
+        // --- Create/Update Ball and Stick Model ---
+        function createOrUpdateBallAndStickModel(atomData) {
+            // Clear existing model content (atoms, bonds, labels)
+            while (crystalModelGroup.children.length > 0) {
+                crystalModelGroup.remove(crystalModelGroup.children[0]);
+            }
+
+            const materials = { 'Hg': hgMaterial, 'Cd': cdMaterial, 'Te': teMaterial };
+            const bondCutoffSq = (lattice_a * bondCutoffFactor) * (lattice_a * bondCutoffFactor);
+            const yAxis = new THREE.Vector3(0, 1, 0); // For stick orientation
+
+            // Add Spheres & Labels
             atomData.forEach(atom => {
                 const sphere = new THREE.Mesh(sphereGeometries[atom.element], materials[atom.element]);
                 sphere.position.copy(atom.position);
-                group.add(sphere);
+                crystalModelGroup.add(sphere);
+
+                // Add Label (if enabled)
+                if (showLabels) {
+                    const label = createLabelSprite(atom.element);
+                    label.position.copy(atom.position);
+                    label.position.y += labelOffset; // Position slightly above the atom
+                    crystalModelGroup.add(label);
+                }
             });
 
-            // Add Sticks (Bonds)
-            const bondCutoff = lattice_a * 0.5; // Approximate bonding distance (adjust if needed)
-                                                // sqrt(3)/4 * lattice_a is ideal ZnS bond length factor
-            const bondCutoffSq = bondCutoff * bondCutoff; // Use squared distance for efficiency
-
-            // Helper vector for quaternion calculation
-            const yAxis = new THREE.Vector3(0, 1, 0);
-
+            // Add Sticks
             for (let i = 0; i < atomData.length; i++) {
-                for (let j = i + 1; j < atomData.length; j++) { // Avoid duplicate checks (j > i)
+                for (let j = i + 1; j < atomData.length; j++) {
                     const atom1 = atomData[i];
                     const atom2 = atomData[j];
-
                     const distSq = atom1.position.distanceToSquared(atom2.position);
 
-                    // Check if distance is within bonding range
                     if (distSq < bondCutoffSq) {
-                         // Ensure bonding only between Cation (Hg/Cd) and Anion (Te)
                          const isCation1 = (atom1.element === 'Hg' || atom1.element === 'Cd');
                          const isCation2 = (atom2.element === 'Hg' || atom2.element === 'Cd');
-                         if (isCation1 === isCation2) continue; // Skip Te-Te or Cation-Cation bonds
+                         if (isCation1 === isCation2) continue; // Only Cation-Anion bonds
 
                         const distance = Math.sqrt(distSq);
-
-                        // Create stick mesh (clone geometry, reuse material)
                         const stick = new THREE.Mesh(stickGeometry, bondMaterial);
-
-                        // Position stick at midpoint
                         stick.position.copy(atom1.position).add(atom2.position).multiplyScalar(0.5);
-
-                        // Orient stick
                         const direction = new THREE.Vector3().subVectors(atom2.position, atom1.position).normalize();
                         const quaternion = new THREE.Quaternion().setFromUnitVectors(yAxis, direction);
                         stick.quaternion.copy(quaternion);
-
-                        // Scale stick to correct length
-                        stick.scale.y = distance; // Scale along the cylinder's height axis
-
-                        group.add(stick);
+                        stick.scale.y = distance;
+                        crystalModelGroup.add(stick);
                     }
                 }
             }
-            return group;
         }
 
-        // --- Generate Data and Create Model ---
-        const atomData = generateCrystalData(2, 2, 2); // Generate data for 2x2x2
-        const crystalModel = createBallAndStickModel(atomData);
-        scene.add(crystalModel);
+        // --- Create Unit Cell Outline ---
+        function createUnitCellOutline() {
+            if (unitCellOutline) {
+                scene.remove(unitCellOutline); // Remove old one if exists
+            }
+             // Calculate position for the *first* unit cell's outline
+             // Its corner was at (0,0,0) before centering, its center at (a/2, a/2, a/2)
+            const supercellCenter = new THREE.Vector3(
+                (supercellDims.nx * lattice_a) / 2 - lattice_a / 2,
+                (supercellDims.ny * lattice_a) / 2 - lattice_a / 2,
+                (supercellDims.nz * lattice_a) / 2 - lattice_a / 2
+            );
+            const outlinePosition = new THREE.Vector3(lattice_a / 2, lattice_a / 2, lattice_a / 2)
+                                      .sub(supercellCenter);
+
+
+            unitCellOutline = new THREE.LineSegments(unitCellEdgesGeometry, unitCellMaterial);
+            unitCellOutline.position.copy(outlinePosition); // Position the center of the outline correctly
+            unitCellOutline.computeLineDistances(); // Important for dashed lines
+
+            scene.add(unitCellOutline); // Add directly to the scene
+        }
+
+        // --- Update Crystal Model (Called on init and slider change) ---
+        function updateCrystalModel() {
+            const atomData = generateCrystalData(supercellDims.nx, supercellDims.ny, supercellDims.nz, cdConcentration);
+            createOrUpdateBallAndStickModel(atomData);
+            // No need to update unit cell outline if lattice_a is fixed
+        }
+
 
         // --- UI Setup ---
-        function addUI() {
-            const infoDiv = document.createElement('div');
-            infoDiv.id = 'info';
-            infoDiv.innerHTML = `
-                <h2>HgCdTe Ball-and-Stick (2x2x2)</h2>
-                <p>Random alloy simulation using Three.js</p>
-                <p>Legend:</p>
-                <ul>
-                    <li><span class="color-box" style="background-color: ${hgMaterial.color.getStyle()};"></span> Mercury (Hg)</li>
-                    <li><span class="color-box" style="background-color: ${cdMaterial.color.getStyle()};"></span> Cadmium (Cd)</li>
-                    <li><span class="color-box" style="background-color: ${teMaterial.color.getStyle()};"></span> Tellurium (Te)</li>
-                    <li><span class="color-box" style="background-color: ${bondMaterial.color.getStyle()};"></span> Bonds</li>
-                </ul>
-                <p>Controls: Drag to rotate, Scroll to zoom</p>
-            `;
-            document.body.appendChild(infoDiv);
-        }
-        addUI();
+        function setupUI() {
+            const slider = document.getElementById('cdSlider');
+            const valueSpan = document.getElementById('cdValue');
+            const spinButton = document.getElementById('spinButton');
+            const labelButton = document.getElementById('labelToggleButton');
 
-        // --- Handle Window Resizing ---
-        window.addEventListener('resize', () => {
+            // Set initial legend colors
+            document.getElementById('hgColorBox').style.backgroundColor = hgMaterial.color.getStyle();
+            document.getElementById('cdColorBox').style.backgroundColor = cdMaterial.color.getStyle();
+            document.getElementById('teColorBox').style.backgroundColor = teMaterial.color.getStyle();
+            document.getElementById('bondColorBox').style.backgroundColor = bondMaterial.color.getStyle();
+
+            // Concentration Slider Listener
+            slider.addEventListener('input', (event) => {
+                cdConcentration = parseFloat(event.target.value);
+                valueSpan.textContent = cdConcentration.toFixed(2);
+                updateCrystalModel(); // Regenerate the model
+            });
+
+            // Spin Button Listener
+            spinButton.addEventListener('click', () => {
+                isSpinning = !isSpinning;
+                spinButton.textContent = isSpinning ? 'Stop Spin' : 'Start Spin';
+            });
+
+             // Label Toggle Button Listener
+             labelButton.addEventListener('click', () => {
+                showLabels = !showLabels;
+                updateCrystalModel(); // Regenerate model to add/remove labels
+            });
+        }
+
+        // --- Window Resize Handler ---
+        function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+        }
 
         // --- Animation Loop ---
         function animate() {
             requestAnimationFrame(animate);
-            controls.update();
+
+            if (isSpinning) {
+                crystalModelGroup.rotation.y += spinSpeed;
+                if (unitCellOutline) { // Spin outline with model if desired
+                   // unitCellOutline.rotation.y += spinSpeed; // Or keep it static
+                }
+            }
+
+            controls.update(); // Only required if controls.enableDamping = true
             renderer.render(scene, camera);
         }
-        animate();
+
+        // --- Start Everything ---
+        init();
 
     </script>
 </body>
